@@ -7,15 +7,14 @@ Usage:
   install-global-skills.sh
   install-global-skills.sh --check
 
-Install or verify absolute symbolic links for this repository's skills under
-~/.agents/skills. Existing files, directories, broken links, and links to other
-targets are never overwritten.
+Install or verify independent copies of this repository's three skills under
+~/.agents/skills. Updates back up and replace the complete workflow atomically.
 EOF
 }
 
 mode=install
 case ${1-} in
-  "")
+  '')
     ;;
   --check)
     mode=check
@@ -29,113 +28,181 @@ case ${1-} in
     exit 64
     ;;
 esac
-
 if (($# > 1)); then
   usage >&2
   exit 64
 fi
 
-script_dir=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-repo_root=$(cd -P -- "$script_dir/.." && pwd)
-source_root=$repo_root/skills
-user_home=${HOME:?HOME must be set}
-target_root=${FEATURE_WORKFLOW_TARGET_ROOT:-$user_home/.agents/skills}
-skill_names=(plan-feature save-approved-plan run-feature)
-created_links=()
-
-fail() {
-  printf 'error: %s\n' "$*" >&2
-  return 1
-}
-
-rollback_created_links() {
-  local status=$?
-  local link
-
-  if ((status != 0)); then
-    for link in "${created_links[@]}"; do
-      if [[ -L "$link" ]]; then
-        rm -f -- "$link"
-      fi
-    done
-  fi
-  exit "$status"
-}
-
-validate_sources() {
-  local skill source metadata
-
-  for skill in "${skill_names[@]}"; do
-    source=$source_root/$skill
-    metadata=$source/agents/openai.yaml
-
-    [[ -d "$source" ]] || fail "missing skill source: $source"
-    [[ -f "$source/SKILL.md" ]] || fail "missing SKILL.md: $source/SKILL.md"
-    [[ -f "$metadata" ]] || fail "missing agent metadata: $metadata"
-    grep -Eq '^[[:space:]]*allow_implicit_invocation:[[:space:]]*false[[:space:]]*$' \
-      "$metadata" || fail "explicit-only policy missing: $metadata"
-  done
-
-  [[ -x "$source_root/run-feature/scripts/integrate-feature.sh" ]] ||
-    fail "integration helper is not executable"
-}
-
-validate_target() {
-  local skill=$1
-  local source=$source_root/$skill
-  local target=$target_root/$skill
-  local actual
-
-  if [[ -L "$target" ]]; then
-    actual=$(readlink -- "$target")
-    [[ "$actual" == "$source" ]] ||
-      fail "target conflict: $target -> $actual (expected $source)"
-    return
-  fi
-
-  if [[ -e "$target" ]]; then
-    fail "target conflict: $target exists and is not the managed symbolic link"
-  fi
-
-  if [[ "$mode" == check ]]; then
-    fail "missing symbolic link: $target"
-  fi
-}
-
+script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=global-skills-common.sh
+source "$script_dir/global-skills-common.sh"
+initialize_paths
 validate_sources
+validate_roots
+acquire_workflow_lock
+validate_roots
 
-if [[ -L "$target_root" && ! -e "$target_root" ]]; then
-  fail "target root is a broken symbolic link: $target_root"
-fi
-if [[ -e "$target_root" && ! -d "$target_root" ]]; then
-  fail "target root exists and is not a directory: $target_root"
-fi
-
+all_current=true
+has_existing=false
+has_legacy_link=false
 for skill in "${skill_names[@]}"; do
-  validate_target "$skill"
-done
-
-if [[ "$mode" == check ]]; then
-  printf 'ok: all global skill links are valid\n'
-  exit 0
-fi
-
-trap rollback_created_links EXIT
-mkdir -p -- "$target_root"
-
-for skill in "${skill_names[@]}"; do
-  source=$source_root/$skill
+  source_dir=$source_root/$skill
   target=$target_root/$skill
 
   if [[ -L "$target" ]]; then
-    printf 'unchanged: %s -> %s\n' "$target" "$source"
-    continue
+    actual=$(readlink -f -- "$target" || true)
+    expected=$(readlink -f -- "$source_dir")
+    [[ -n "$actual" && "$actual" == "$expected" ]] ||
+      fail "refusing to replace unmanaged or broken symbolic link: $target"
+    has_existing=true
+    has_legacy_link=true
+    all_current=false
+  elif [[ -e "$target" ]]; then
+    [[ -d "$target" ]] || fail "target exists and is not a directory: $target"
+    has_existing=true
+    if ! directories_equal "$source_dir" "$target"; then
+      all_current=false
+    fi
+  else
+    all_current=false
   fi
-
-  ln -s -- "$source" "$target"
-  created_links+=("$target")
-  printf 'installed: %s -> %s\n' "$target" "$source"
 done
 
+if [[ "$mode" == check ]]; then
+  [[ "$all_current" == true ]] || fail 'global skill copies are missing, stale, or symbolic links'
+  printf 'ok: all global skill copies are current\n'
+  exit 0
+fi
+
+if [[ "$all_current" == true ]]; then
+  printf 'unchanged: all global skill copies are current\n'
+  exit 0
+fi
+
+mkdir -p -- "$target_root"
+stage_dir=$(make_transaction_directory stage)
+rollback_dir=$stage_dir/rollback
+mkdir -- "$rollback_dir"
+transaction_finished=false
+moved_originals=()
+promoted=()
+
+recover_installation() {
+  local skill promoted_skill target failed_root=$stage_dir/failed-install
+  local was_promoted
+  local recovery_failed=false
+
+  mkdir -p -- "$failed_root"
+  for skill in "${skill_names[@]}"; do
+    target=$target_root/$skill
+    if path_exists "$rollback_dir/$skill"; then
+      if path_exists "$target" && ! mv -- "$target" "$failed_root/$skill"; then
+        recovery_failed=true
+        continue
+      fi
+      if ! mv -- "$rollback_dir/$skill" "$target"; then
+        recovery_failed=true
+      fi
+      continue
+    fi
+
+    was_promoted=false
+    for promoted_skill in "${promoted[@]}"; do
+      if [[ "$promoted_skill" == "$skill" ]]; then
+        was_promoted=true
+        break
+      fi
+    done
+    if [[ "$was_promoted" == true ]] && path_exists "$target"; then
+      if ! mv -- "$target" "$failed_root/$skill"; then
+        recovery_failed=true
+      fi
+    fi
+  done
+
+  [[ "$recovery_failed" == false ]]
+}
+
+cleanup_transaction() {
+  local status=$?
+  if [[ "$transaction_finished" == true ]]; then
+    return "$status"
+  fi
+
+  if recover_installation; then
+    case ${stage_dir:-} in
+      "$target_parent"/.feature-workflow-stage-*)
+        rm -rf -- "$stage_dir"
+        ;;
+    esac
+  else
+    printf 'error: automatic restore was incomplete; recovery data remains at: %s\n' \
+      "$stage_dir" >&2
+  fi
+  return "$status"
+}
+trap cleanup_transaction EXIT
+
+for skill in "${skill_names[@]}"; do
+  copy_directory_contents "$source_root/$skill" "$stage_dir/$skill"
+  directories_equal "$source_root/$skill" "$stage_dir/$skill" ||
+    fail "staged copy differs from source: $skill"
+done
+
+backup_path=''
+if [[ "$has_existing" == true ]]; then
+  backup_kind=install
+  if [[ "$has_legacy_link" == true ]]; then
+    backup_kind=migration
+  fi
+  backup_path=$(create_backup_set "$backup_kind")
+fi
+
+promotion_failed=false
+for skill in "${skill_names[@]}"; do
+  target=$target_root/$skill
+  if path_exists "$target"; then
+    if ! mv -- "$target" "$rollback_dir/$skill"; then
+      promotion_failed=true
+      break
+    fi
+    moved_originals+=("$skill")
+  fi
+done
+
+if [[ "$promotion_failed" == false ]]; then
+  for skill in "${skill_names[@]}"; do
+    if ! mv -- "$stage_dir/$skill" "$target_root/$skill"; then
+      promotion_failed=true
+      break
+    fi
+    promoted+=("$skill")
+  done
+fi
+
+if [[ "$promotion_failed" == true ]]; then
+  if ! recover_installation; then
+    transaction_finished=true
+    trap - EXIT
+    fail "installation failed and automatic restore was incomplete; recovery data remains at: $stage_dir"
+  fi
+  transaction_finished=true
+  trap - EXIT
+  rm -rf -- "$stage_dir"
+  fail 'installation failed; the previous workflow installation was restored'
+fi
+
+rm -rf -- "$rollback_dir"
+rmdir -- "$stage_dir"
+transaction_finished=true
 trap - EXIT
-printf 'ok: global skill installation is complete\n'
+prune_backups
+
+if [[ "$has_legacy_link" == true ]]; then
+  printf 'migrated: symbolic links replaced with independent skill copies\n'
+else
+  printf 'installed: all global skill copies are current\n'
+fi
+if [[ -n "$backup_path" ]]; then
+  printf 'backup: %s\n' "$backup_path"
+fi
