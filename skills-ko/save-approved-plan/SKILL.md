@@ -30,7 +30,7 @@ Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전�
 ## 기능 저장
 
 1. 저장소와 절대 공용 Git 디렉터리를 확인합니다.
-2. 확정된 `YYYYMMDD-<slug>` ID를 재사용합니다. 그 사이 충돌이 생겼다면 다음 숫자 suffix를 붙이고 저장되는 계획 전체에서 ID를 일관되게 갱신합니다.
+2. 확정된 `YYYYMMDD-<slug>` ID를 재사용합니다. 그 사이 충돌이 생겼다면 다음 숫자 suffix를 붙이고 frontmatter와 goal objective의 저장 계획 경로를 포함해 feature ID를 나타내는 모든 필드와 경로에서 canonical ID를 일관되게 갱신합니다. 우연히 같은 문자열을 포함한 무관한 서술은 바꾸지 않습니다.
 3. `<git-common-dir>/feature-workflow/features/<id>/`를 생성합니다.
 4. 승인된 결정을 바꾸지 않고 전체 계획을 `plan.md`로 저장합니다.
 5. 다음 내용으로 `state.json`을 원자적으로 생성합니다.

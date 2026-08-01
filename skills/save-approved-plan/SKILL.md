@@ -38,7 +38,9 @@ Ask the user to return to Plan mode and invoke `$plan-feature`.
 
 1. Resolve the repository and absolute common Git directory.
 2. Reuse the finalized `YYYYMMDD-<slug>` ID. If it now collides, append the next numeric suffix
-   and update the saved plan consistently.
+   and consistently update the canonical ID in every feature-ID-bearing field and path, including
+   the saved-plan path in a goal objective. Do not rewrite unrelated prose that happens to contain
+   the same text.
 3. Create `<git-common-dir>/feature-workflow/features/<id>/`.
 4. Save the complete plan as `plan.md` without changing approved decisions.
 5. Create `state.json` atomically with:

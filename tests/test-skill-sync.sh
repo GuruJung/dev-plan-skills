@@ -48,6 +48,14 @@ assert_contains() {
   grep -Fq -- "$expected" "$file" || fail "missing expected text in $file: $expected"
 }
 
+assert_before() {
+  local file=$1 first=$2 second=$3 first_line second_line
+  first_line=$(grep -nF -- "$first" "$file" | head -n 1 | cut -d: -f1)
+  second_line=$(grep -nF -- "$second" "$file" | head -n 1 | cut -d: -f1)
+  [[ -n $first_line && -n $second_line && $first_line -lt $second_line ]] ||
+    fail "expected text order in $file: $first before $second"
+}
+
 assert_absent() {
   local root=$1 unexpected=$2
   if grep -RFq -- "$unexpected" "$root"; then
@@ -105,6 +113,26 @@ assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
   '승인된 `$plan-run-feature` 위임은 같은 handoff에서'
 assert_contains "$repo_root/skills/run-feature/SKILL.md" \
   'Allow an approved `$plan-run-feature` delegation only with'
+assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
+  'metadata를 만들거나 바꾸기 전에 `../save-approved-plan/SKILL.md`와 `../run-feature/SKILL.md`를 각각 완전히 읽고'
+assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
+  'before creating or changing metadata, read both `../save-approved-plan/SKILL.md` and `../run-feature/SKILL.md` completely'
+assert_before "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
+  'metadata를 만들거나 바꾸기 전에' '## 저장 또는 재사용'
+assert_before "$repo_root/skills/plan-run-feature/SKILL.md" \
+  'before creating or changing metadata' '## Save or reuse'
+assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
+  'goal objective의 저장 계획 경로처럼 feature ID를 나타내는 모든 필드와 경로'
+assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
+  'every field and path that denotes the feature ID, including a saved-plan path in a goal objective'
+assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
+  '재사용한 state가 `integrated`여도 직접 완료라고 보고하지 말고'
+assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
+  'Even when reused state says `integrated`, do not report completion directly.'
+assert_contains "$repo_root/skills-ko/save-approved-plan/SKILL.md" \
+  'goal objective의 저장 계획 경로를 포함해 feature ID를 나타내는 모든 필드와 경로'
+assert_contains "$repo_root/skills/save-approved-plan/SKILL.md" \
+  'every feature-ID-bearing field and path, including'
 assert_contains "$repo_root/skills/plan-run-feature/agents/openai.yaml" \
   'allow_implicit_invocation: true'
 for skill in plan-feature save-approved-plan run-feature; do

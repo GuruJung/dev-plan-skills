@@ -44,16 +44,18 @@ execution_handoff: plan-run-feature
 
 조건이 부족하면 계획을 저장하거나 실행하지 마세요. 최신 계획에 marker가 없으면 일반 `$plan-feature` 흐름으로 취급하고 기존 명시적 명령을 안내하세요.
 
+조건을 모두 확인한 직후, metadata를 만들거나 바꾸기 전에 `../save-approved-plan/SKILL.md`와 `../run-feature/SKILL.md`를 각각 완전히 읽고 두 `name`을 검증하세요. 어느 하나라도 누락되거나 잘못됐으면 변경 없이 중단하세요. 아래 저장과 실행 단계에서는 이 사전 검증된 계약을 적용하세요.
+
 ## 저장 또는 재사용
 
 먼저 같은 대화에서 이 계획에 대해 성공적으로 저장했다고 보고된 feature ID를 확인하세요. 없으면 계획의 제안 ID를 확인하세요.
 
-기존 feature는 저장된 `plan.md`가 최신 승인 계획에서 `feature_id`만 저장된 state의 ID로 치환한 내용과 같고 handoff marker도 유지될 때만 동일 계획으로 취급하세요. 동일 계획이면 새 suffix나 metadata를 만들지 말고 그 ID를 재사용하세요. 상태가 `integrated`이면 이미 완료됐다고 보고하고 종료하세요.
+기존 feature는 저장된 `plan.md`가 최신 승인 계획에 `save-approved-plan`의 동일한 canonical ID rewrite를 적용한 결과와 같고 handoff marker도 유지될 때만 동일 계획으로 취급하세요. proposed ID를 저장된 state ID로 바꿀 때 frontmatter뿐 아니라 goal objective의 저장 계획 경로처럼 feature ID를 나타내는 모든 필드와 경로를 일관되게 정규화하되, 우연히 같은 문자열을 포함한 무관한 서술은 바꾸지 마세요. 정규화 범위를 명확히 판단할 수 없으면 새 suffix나 metadata를 만들지 말고 불일치를 보여 준 뒤 사용자 선택을 기다리세요. 동일 계획이면 새 suffix나 metadata를 만들지 말고 그 ID를 재사용하세요.
 
-재사용할 feature가 없으면 `../save-approved-plan/SKILL.md`를 완전히 읽고 승인된 handoff의 위임 호출로 적용하세요. collision으로 ID가 바뀌면 저장 결과의 resolved ID를 이후 단계에 사용하세요. 저장이 실패하거나 사용자 선택을 기다리면 실행 단계로 넘어가지 마세요.
+재사용할 feature가 없으면 사전 검증한 `save-approved-plan` 계약을 승인된 handoff의 위임 호출로 적용하세요. collision으로 ID가 바뀌면 저장 결과의 resolved ID를 이후 단계에 사용하세요. 저장이 실패하거나 사용자 선택을 기다리면 실행 단계로 넘어가지 마세요.
 
 ## 실행
 
-새로 저장하거나 동일 계획으로 재사용한 feature ID가 있을 때만 `../run-feature/SKILL.md`를 완전히 읽고 승인된 handoff의 위임 호출로 해당 ID에 적용하세요. 저장과 실행 사이에 추가 확인을 요구하지 마세요.
+새로 저장하거나 동일 계획으로 재사용한 feature ID가 있을 때만 사전 검증한 `run-feature` 계약을 승인된 handoff의 위임 호출로 해당 ID에 적용하세요. 재사용한 state가 `integrated`여도 직접 완료라고 보고하지 말고 `run-feature`의 재진입 진단과 Git-source-of-truth 검증을 적용한 뒤 일치할 때만 완료를 보고하세요. 불일치하면 기존 복구 선택 규칙에 따라 중단하세요. 저장과 실행 사이에 추가 확인을 요구하지 마세요.
 
 `save-approved-plan`과 `run-feature`의 안전 중단, 복구 선택, 상태 결속, 독립 리뷰 및 integration 규칙을 그대로 유지하세요. 이 orchestration을 충돌, 불일치, 위험한 결정 또는 명시적 승인 요구를 우회하는 권한으로 취급하지 마세요.
