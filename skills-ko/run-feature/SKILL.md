@@ -144,7 +144,7 @@ authoritative eval 이후 main이 변경됐으면 다음을 수행하세요.
 
 ## 병합 후 smoke 선택
 
-최신 성공 eval duration과 계획의 threshold, 기본 60초를 사용하세요.
+최신 성공 eval duration과 계획의 threshold, 기본 300초를 사용하세요.
 
 - `always`: duration과 관계없이 포함
 - `never`: 제외

@@ -47,7 +47,7 @@ Keep asking material questions until the plan fixes:
 - executable eval commands and their success conditions;
 - independent-review acceptance;
 - post-merge smoke selection for every eval: `auto`, `always`, or `never`;
-- smoke threshold, defaulting to 60 seconds;
+- smoke threshold, defaulting to 300 seconds;
 - rollout, migration, or monitoring only when the feature needs them.
 
 Require at least one post-merge smoke command.
@@ -104,7 +104,7 @@ feature_id: <id>
 title: <title>
 feature_type: <standard-or-goal-loop>
 base_branch: main
-smoke_threshold_seconds: 60
+smoke_threshold_seconds: 300
 ---
 ```
 

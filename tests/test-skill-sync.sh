@@ -43,6 +43,37 @@ expect_failure() {
   fi
 }
 
+assert_contains() {
+  local file=$1 expected=$2
+  grep -Fq -- "$expected" "$file" || fail "missing expected text in $file: $expected"
+}
+
+assert_absent() {
+  local root=$1 unexpected=$2
+  if grep -RFq -- "$unexpected" "$root"; then
+    fail "unexpected legacy text under $root: $unexpected"
+  fi
+}
+
+# Planning and execution agree on the five-minute default in both authoring languages.
+assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
+  '기본값이 300초인 smoke 기준 시간'
+assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
+  'smoke_threshold_seconds: 300'
+assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
+  '계획의 threshold, 기본 300초를 사용하세요.'
+assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
+  'smoke threshold, defaulting to 300 seconds;'
+assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
+  'smoke_threshold_seconds: 300'
+assert_contains "$repo_root/skills/run-feature/SKILL.md" \
+  'plan threshold, default 300 seconds:'
+assert_absent "$repo_root/skills" 'smoke_threshold_seconds: 60'
+assert_absent "$repo_root/skills" 'default 60 seconds'
+assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 60'
+assert_absent "$repo_root/skills-ko" '기본값이 60초'
+assert_absent "$repo_root/skills-ko" '기본 60초'
+
 # A valid repository can record and verify a complete synchronization state.
 make_case valid
 "$case_root/scripts/record-skill-sync.sh" >/dev/null

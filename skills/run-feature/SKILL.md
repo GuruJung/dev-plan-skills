@@ -181,7 +181,7 @@ fully evaluated and accepted HEAD.
 
 ## Select post-merge smoke
 
-Use the latest successful eval durations and the plan threshold, default 60 seconds:
+Use the latest successful eval durations and the plan threshold, default 300 seconds:
 
 - `always`: include regardless of duration;
 - `never`: exclude;

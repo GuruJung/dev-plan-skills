@@ -42,7 +42,7 @@ Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 �
 - 실행 가능한 평가 명령과 성공 조건
 - 독립 리뷰 승인 기준
 - 각 평가의 병합 후 smoke 선택: `auto`, `always`, `never` 중 하나
-- 기본값이 60초인 smoke 기준 시간
+- 기본값이 300초인 smoke 기준 시간
 - 기능에 필요한 경우에만 rollout, migration, monitoring
 
 병합 후 smoke 명령을 적어도 하나 요구하세요.
@@ -91,7 +91,7 @@ feature_id: <id>
 title: <title>
 feature_type: <standard-or-goal-loop>
 base_branch: main
-smoke_threshold_seconds: 60
+smoke_threshold_seconds: 300
 ---
 ```
 
