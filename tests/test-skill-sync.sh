@@ -45,14 +45,31 @@ make_case valid
 
 # A change to either side makes the recorded pair stale.
 make_case stale-korean
+cp -- "$case_root/skills-ko/.sync-state.sha256" "$case_root/state-before"
 printf '\n한글 원본 변경\n' >>"$case_root/skills-ko/plan-feature/SKILL.md"
 expect_failure 'checker accepted a one-sided Korean change' \
   "$case_root/scripts/check-skill-sync.sh"
+expect_failure 'recorder accepted a one-sided Korean change' \
+  "$case_root/scripts/record-skill-sync.sh"
+cmp -s -- "$case_root/state-before" "$case_root/skills-ko/.sync-state.sha256" ||
+  fail 'one-sided Korean record changed the synchronization state'
 
 make_case stale-english
+cp -- "$case_root/skills-ko/.sync-state.sha256" "$case_root/state-before"
 printf '\nEnglish installed change\n' >>"$case_root/skills/plan-feature/SKILL.md"
 expect_failure 'checker accepted a one-sided English change' \
   "$case_root/scripts/check-skill-sync.sh"
+expect_failure 'recorder accepted a one-sided English change' \
+  "$case_root/scripts/record-skill-sync.sh"
+cmp -s -- "$case_root/state-before" "$case_root/skills-ko/.sync-state.sha256" ||
+  fail 'one-sided English record changed the synchronization state'
+
+# A paired change can be recorded and then passes verification.
+make_case paired-change
+printf '\n한글 동기화 변경\n' >>"$case_root/skills-ko/plan-feature/SKILL.md"
+printf '\nSynchronized English change\n' >>"$case_root/skills/plan-feature/SKILL.md"
+"$case_root/scripts/record-skill-sync.sh" >/dev/null
+"$case_root/scripts/check-skill-sync.sh" >/dev/null
 
 # Missing and additional counterparts are rejected before checksums are recorded.
 make_case missing-counterpart
@@ -89,5 +106,15 @@ cp -- "$case_root/skills/plan-feature/SKILL.md" \
   "$case_root/skills-ko/plan-feature/SKILL.md"
 expect_failure 'recorder accepted an English-only Korean source' \
   "$case_root/scripts/record-skill-sync.sh"
+
+# Missing state requires an explicit one-time initialization and cannot be overwritten that way.
+make_case initialize-state
+rm -- "$case_root/skills-ko/.sync-state.sha256"
+expect_failure 'recorder initialized missing state without an explicit flag' \
+  "$case_root/scripts/record-skill-sync.sh"
+"$case_root/scripts/record-skill-sync.sh" --initialize >/dev/null
+"$case_root/scripts/check-skill-sync.sh" >/dev/null
+expect_failure 'recorder initialized over existing state' \
+  "$case_root/scripts/record-skill-sync.sh" --initialize
 
 printf 'All skill synchronization tests passed.\n'

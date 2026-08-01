@@ -104,3 +104,66 @@ write_current_skill_checksums() {
     done
   )
 }
+
+validate_paired_changes_from_recorded_state() {
+  local hash path extra name current_korean_hash current_english_hash
+  local korean_changed english_changed
+  local -A recorded_korean=() recorded_english=() current_names=()
+
+  [[ -f "$sync_state_path" && ! -L "$sync_state_path" ]] ||
+    sync_fail "missing or invalid sync state: $sync_state_path"
+
+  while read -r hash path extra; do
+    [[ -z "${extra:-}" && "$hash" =~ ^[0-9a-f]{64}$ ]] ||
+      sync_fail "invalid sync state entry: $sync_state_path"
+    if [[ "$path" =~ ^skills-ko/([^/]+)/SKILL\.md$ ]]; then
+      name=${BASH_REMATCH[1]}
+      [[ -z "${recorded_korean[$name]+present}" ]] ||
+        sync_fail "duplicate Korean sync state entry: $name"
+      recorded_korean[$name]=$hash
+    elif [[ "$path" =~ ^skills/([^/]+)/SKILL\.md$ ]]; then
+      name=${BASH_REMATCH[1]}
+      [[ -z "${recorded_english[$name]+present}" ]] ||
+        sync_fail "duplicate English sync state entry: $name"
+      recorded_english[$name]=$hash
+    else
+      sync_fail "unexpected path in sync state: $path"
+    fi
+  done <"$sync_state_path"
+
+  ((${#recorded_korean[@]} > 0)) || sync_fail 'sync state contains no skill pairs'
+  for name in "${!recorded_korean[@]}"; do
+    [[ -n "${recorded_english[$name]+present}" ]] ||
+      sync_fail "sync state is missing the English side: $name"
+  done
+  for name in "${!recorded_english[@]}"; do
+    [[ -n "${recorded_korean[$name]+present}" ]] ||
+      sync_fail "sync state is missing the Korean side: $name"
+  done
+
+  for name in "${sync_skill_names[@]}"; do
+    current_names[$name]=true
+    if [[ -z "${recorded_korean[$name]+present}" ]]; then
+      continue
+    fi
+    current_korean_hash=$(sha256sum -- "$sync_korean_root/$name/SKILL.md")
+    current_korean_hash=${current_korean_hash%% *}
+    current_english_hash=$(sha256sum -- "$sync_english_root/$name/SKILL.md")
+    current_english_hash=${current_english_hash%% *}
+    korean_changed=false
+    english_changed=false
+    [[ "$current_korean_hash" == "${recorded_korean[$name]}" ]] || korean_changed=true
+    [[ "$current_english_hash" == "${recorded_english[$name]}" ]] || english_changed=true
+    [[ "$korean_changed" == "$english_changed" ]] ||
+      sync_fail "only one side of the recorded skill pair changed: $name"
+  done
+
+  # Removing a skill is paired only when both current directories are absent. Source inventory
+  # validation already guarantees that newly added skills exist on both sides.
+  for name in "${!recorded_korean[@]}"; do
+    if [[ -z "${current_names[$name]+present}" ]]; then
+      [[ ! -e "$sync_korean_root/$name" && ! -e "$sync_english_root/$name" ]] ||
+        sync_fail "only one side of the recorded skill pair was removed: $name"
+    fi
+  done
+}

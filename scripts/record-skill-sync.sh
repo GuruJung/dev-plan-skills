@@ -7,6 +7,30 @@ source "$script_dir/skill-sync-common.sh"
 initialize_skill_sync
 validate_skill_sync_sources
 
+initialize_state=false
+case ${1-} in
+  '')
+    ;;
+  --initialize)
+    initialize_state=true
+    ;;
+  *)
+    printf 'Usage: record-skill-sync.sh [--initialize]\n' >&2
+    exit 64
+    ;;
+esac
+if (($# > 1)); then
+  printf 'Usage: record-skill-sync.sh [--initialize]\n' >&2
+  exit 64
+fi
+
+if [[ "$initialize_state" == true ]]; then
+  [[ ! -e "$sync_state_path" && ! -L "$sync_state_path" ]] ||
+    sync_fail "refusing to initialize over existing sync state: $sync_state_path"
+else
+  validate_paired_changes_from_recorded_state
+fi
+
 temporary_state=$(mktemp "$sync_korean_root/.sync-state.sha256.tmp.XXXXXX")
 record_finished=false
 cleanup() {
