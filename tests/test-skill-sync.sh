@@ -87,6 +87,31 @@ assert_contains "$repo_root/skills/run-feature/SKILL.md" \
 assert_contains "$repo_root/skills/run-feature/SKILL.md" \
   'the reviewed change introduced it;'
 
+# Plan-and-run handoff is marked, narrowly delegated, and implicitly discoverable only in its
+# orchestration skill.
+assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
+  'execution_handoff: plan-run-feature'
+assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
+  'execution_handoff: plan-run-feature'
+assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
+  '`$plan-run-feature`가 위임한 호출에서는'
+assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
+  'For an invocation delegated by `$plan-run-feature`'
+assert_contains "$repo_root/skills-ko/save-approved-plan/SKILL.md" \
+  '승인된 `$plan-run-feature` 위임에서는 resolved ID를 orchestrator에 반환'
+assert_contains "$repo_root/skills/save-approved-plan/SKILL.md" \
+  'For an approved `$plan-run-feature` delegation, return the resolved ID'
+assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
+  '승인된 `$plan-run-feature` 위임은 같은 handoff에서'
+assert_contains "$repo_root/skills/run-feature/SKILL.md" \
+  'Allow an approved `$plan-run-feature` delegation only with'
+assert_contains "$repo_root/skills/plan-run-feature/agents/openai.yaml" \
+  'allow_implicit_invocation: true'
+for skill in plan-feature save-approved-plan run-feature; do
+  assert_contains "$repo_root/skills/$skill/agents/openai.yaml" \
+    'allow_implicit_invocation: false'
+done
+
 # A valid repository can record and verify a complete synchronization state.
 make_case valid
 "$case_root/scripts/record-skill-sync.sh" >/dev/null

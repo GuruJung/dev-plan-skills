@@ -1,6 +1,6 @@
 ---
 name: plan-feature
-description: Interview the user and produce a decision-complete implementation plan for a standard or native-goal-loop software feature. Use only when the user explicitly invokes "$plan-feature" to plan a feature before saving or implementation.
+description: Interview the user and produce a decision-complete implementation plan for a standard or native-goal-loop software feature. Use only when the user explicitly invokes "$plan-feature" before saving or implementation, or when `$plan-run-feature` delegates its approved Plan phase.
 ---
 
 # Plan Feature
@@ -14,7 +14,7 @@ machine-readable schema keys exactly.
 ## Require Plan mode
 
 If Plan mode is not active, ask the user to switch to Plan mode and invoke `$plan-feature` again.
-Stop without changing repository state.
+Delegation from `$plan-run-feature` also requires Plan mode. Stop without changing repository state.
 
 ## Ground the interview
 
@@ -111,6 +111,13 @@ smoke_threshold_seconds: 300
 For a goal loop, include a `Goal Contract` section containing every approved experiment field,
 including the native objective and budgets.
 
-Produce the decision-complete plan in the required Plan-mode format. End with a localized
-blockquote telling the user to switch to Default mode and explicitly invoke `$save-approved-plan`
-to save the plan.
+Produce the decision-complete plan in the required Plan-mode format.
+
+For an ordinary `$plan-feature` invocation, end with a localized blockquote telling the user to
+switch to Default mode and explicitly invoke `$save-approved-plan` to save the plan.
+
+For an invocation delegated by `$plan-run-feature`, add `execution_handoff: plan-run-feature` to
+the frontmatter. End with a localized blockquote explaining that choosing "Implement this plan"
+continues with plan persistence and execution in Default mode, with an explicit
+`$plan-run-feature` invocation in Default mode as the fallback when automatic continuation does
+not start.

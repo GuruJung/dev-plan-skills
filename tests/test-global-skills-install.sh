@@ -41,7 +41,7 @@ repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
 install_script=$repo_root/scripts/install-global-skills.sh
 uninstall_script=$repo_root/scripts/uninstall-global-skills.sh
 source_root=$repo_root/skills
-skill_names=(plan-feature save-approved-plan run-feature)
+skill_names=(plan-feature plan-run-feature save-approved-plan run-feature)
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/feature workflow skills tests.XXXXXX")
 
 cleanup() {

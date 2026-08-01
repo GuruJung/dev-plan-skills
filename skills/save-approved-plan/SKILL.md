@@ -1,11 +1,11 @@
 ---
 name: save-approved-plan
-description: Persist the latest finalized standard or goal-loop feature plan into shared Git metadata without preparing or implementing it. Use only when the user explicitly invokes "$save-approved-plan" after completing a plan with plan-feature.
+description: Persist the latest finalized standard or goal-loop feature plan into shared Git metadata without preparing or implementing it. Use only when the user explicitly invokes "$save-approved-plan" after planning, or when an approved `$plan-run-feature` Default continuation delegates persistence.
 ---
 
 # Save Approved Plan
 
-Save one finalized feature plan only. Never treat saving as implementation approval.
+Save one finalized feature plan only. Never treat saving itself as implementation approval. Only a separate implementation request in an approved `$plan-run-feature` continuation also authorizes the later run.
 
 Use the user's current conversation language for questions, status, and prose artifacts unless the
 user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and
@@ -15,6 +15,11 @@ machine-readable schema keys exactly.
 
 If Plan mode is active, ask the user to switch to Default mode and invoke `$save-approved-plan`
 again. Do not write files.
+
+For an ordinary invocation, require the user to invoke `$save-approved-plan` explicitly. Allow a
+delegated invocation only when the latest finalized plan from an explicit same-conversation
+`$plan-run-feature` flow contains `execution_handoff: plan-run-feature` and the user requested its
+implementation in Default mode. Otherwise, do not write files.
 
 Use the latest finalized `$plan-feature` plan in the conversation. Require:
 
@@ -85,6 +90,8 @@ Ask the user to return to Plan mode and invoke `$plan-feature`.
 
 7. Use a temporary file in the destination directory followed by atomic rename for state writes.
 8. Do not create a branch or worktree, implement, test, commit, or push.
-9. Report the saved ID and path, then show `$run-feature <id>` as the next explicit command.
+9. For an ordinary invocation, report the saved ID and path, then show `$run-feature <id>` as the
+   next explicit command. For an approved `$plan-run-feature` delegation, return the resolved ID
+   to the orchestrator and allow the later run without another confirmation.
 
 Never overwrite an existing feature plan without explicit user approval.

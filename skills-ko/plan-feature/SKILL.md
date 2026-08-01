@@ -1,6 +1,6 @@
 ---
 name: plan-feature
-description: 표준 기능 또는 네이티브 목표 루프 기능을 계획하기 위해 사용자를 인터뷰하고 의사결정이 완료된 구현 계획을 작성합니다. 사용자가 구현 또는 저장 전에 기능을 계획하려고 "$plan-feature"를 명시적으로 호출한 경우에만 사용합니다.
+description: 표준 기능 또는 네이티브 목표 루프 기능을 계획하기 위해 사용자를 인터뷰하고 의사결정이 완료된 구현 계획을 작성합니다. 사용자가 구현 또는 저장 전에 기능을 계획하려고 "$plan-feature"를 명시적으로 호출하거나 `$plan-run-feature`가 승인된 Plan 단계를 위임한 경우에만 사용합니다.
 ---
 
 # 기능 계획
@@ -11,7 +11,7 @@ description: 표준 기능 또는 네이티브 목표 루프 기능을 계획하
 
 ## Plan 모드 요구
 
-Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 전환한 뒤 `$plan-feature`를 다시 호출하도록 요청하세요.
+Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 전환한 뒤 `$plan-feature`를 다시 호출하도록 요청하세요. `$plan-run-feature`가 위임한 호출도 Plan 모드여야 합니다.
 저장소 상태를 변경하지 말고 중단하세요.
 
 ## 인터뷰의 근거 확보
@@ -97,4 +97,8 @@ smoke_threshold_seconds: 300
 
 goal loop에는 네이티브 objective와 budget을 포함해 승인된 모든 실험 필드가 들어간 `Goal Contract` 섹션을 포함하세요.
 
-요구되는 Plan 모드 형식으로 의사결정이 완료된 계획을 작성하세요. 마지막에는 계획을 저장하려면 Default 모드로 전환하고 `$save-approved-plan`을 명시적으로 호출해야 한다는 안내를 현재 대화 언어로 현지화한 인용문을 넣으세요.
+요구되는 Plan 모드 형식으로 의사결정이 완료된 계획을 작성하세요.
+
+일반 `$plan-feature` 호출의 마지막에는 계획을 저장하려면 Default 모드로 전환하고 `$save-approved-plan`을 명시적으로 호출해야 한다는 안내를 현재 대화 언어로 현지화한 인용문을 넣으세요.
+
+`$plan-run-feature`가 위임한 호출에서는 frontmatter에 `execution_handoff: plan-run-feature`를 추가하세요. 마지막 인용문에는 "Implement this plan"을 선택하면 Default 모드에서 계획 저장과 실행을 계속하며, 자동 continuation이 시작되지 않으면 Default 모드에서 `$plan-run-feature`를 다시 호출할 수 있다고 안내하세요.

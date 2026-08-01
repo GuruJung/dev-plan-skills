@@ -1,0 +1,7 @@
+interface:
+  display_name: "Plan and Run Feature"
+  short_description: "Plan, save, and run a feature in one handoff"
+  default_prompt: "Use $plan-run-feature to plan a feature and save and run it after approval."
+
+policy:
+  allow_implicit_invocation: true

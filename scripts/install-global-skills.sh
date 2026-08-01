@@ -7,7 +7,7 @@ Usage:
   install-global-skills.sh
   install-global-skills.sh --check
 
-Install or verify independent copies of this repository's three skills under
+Install or verify independent copies of this repository's four skills under
 ~/.agents/skills. Updates back up and replace the complete workflow atomically.
 EOF
 }

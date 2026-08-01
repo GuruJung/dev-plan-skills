@@ -1,17 +1,19 @@
 ---
 name: save-approved-plan
-description: 확정된 최신 표준 또는 목표 루프 기능 계획을 준비나 구현 없이 공유 Git 메타데이터에 저장합니다. plan-feature로 계획을 완료한 뒤 사용자가 "$save-approved-plan"을 명시적으로 호출한 경우에만 사용합니다.
+description: 확정된 최신 표준 또는 목표 루프 기능 계획을 준비나 구현 없이 공유 Git 메타데이터에 저장합니다. plan-feature로 계획을 완료한 뒤 사용자가 "$save-approved-plan"을 명시적으로 호출하거나 승인된 `$plan-run-feature` Default continuation이 저장을 위임한 경우에만 사용합니다.
 ---
 
 # 승인된 계획 저장
 
-확정된 기능 계획 하나만 저장하세요. 저장을 구현 승인으로 취급하지 마세요.
+확정된 기능 계획 하나만 저장하세요. 저장 자체를 구현 승인으로 취급하지 마세요. 승인된 `$plan-run-feature` continuation의 별도 구현 요청만 후속 실행도 승인합니다.
 
 사용자가 다른 언어를 명시적으로 요청하지 않는 한 질문, 상태 안내, 서술형 산출물에는 사용자의 현재 대화 언어를 사용하세요. 명령, 식별자, 경로, enum 값, 기계 판독용 스키마 키는 원형을 정확히 유지하세요.
 
 ## 인계 확인
 
 Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전환하고 `$save-approved-plan`을 다시 호출하도록 요청하세요. 파일을 쓰지 마세요.
+
+일반 호출에서는 사용자가 `$save-approved-plan`을 명시적으로 호출해야 합니다. 위임 호출은 같은 대화에서 사용자가 명시적으로 시작한 `$plan-run-feature`의 최신 확정 계획에 `execution_handoff: plan-run-feature`가 있고, 사용자가 Default 모드에서 그 계획의 구현을 요청한 경우에만 허용하세요. 조건이 부족하면 파일을 쓰지 마세요.
 
 대화에서 가장 최근에 확정된 `$plan-feature` 계획을 사용하세요. 다음을 요구하세요.
 
@@ -79,6 +81,6 @@ Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전�
 
 7. 상태 파일을 쓸 때 destination 디렉터리의 임시 파일을 사용한 뒤 atomic rename하세요.
 8. branch나 worktree를 만들거나, 구현, 테스트, commit, push하지 마세요.
-9. 저장된 ID와 경로를 보고한 뒤 다음 명시적 명령으로 `$run-feature <id>`를 보여 주세요.
+9. 일반 호출에서는 저장된 ID와 경로를 보고한 뒤 다음 명시적 명령으로 `$run-feature <id>`를 보여 주세요. 승인된 `$plan-run-feature` 위임에서는 resolved ID를 orchestrator에 반환하고 추가 확인 없이 후속 실행을 허용하세요.
 
 명시적인 사용자 승인 없이 기존 기능 계획을 덮어쓰지 마세요.

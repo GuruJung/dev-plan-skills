@@ -1,6 +1,6 @@
 ---
 name: run-feature
-description: Prepare, implement, evaluate, independently review, and integrate a saved standard or goal-loop feature, or diagnose and resume an interrupted feature. Use only when the user explicitly invokes "$run-feature", optionally with a feature ID.
+description: Prepare, implement, evaluate, independently review, and integrate a saved standard or goal-loop feature, or diagnose and resume an interrupted feature. Use only when the user explicitly invokes "$run-feature", optionally with a feature ID, or when an approved `$plan-run-feature` continuation delegates a successfully saved or reused feature ID.
 ---
 
 # Run Feature
@@ -14,7 +14,11 @@ machine-readable schema keys exactly.
 
 ## Resolve the feature
 
-Accept `$run-feature [<feature-id>]`. Resolve in this order:
+Accept `$run-feature [<feature-id>]`. Allow an approved `$plan-run-feature` delegation only with
+the resolved ID successfully saved or reused as the same plan in that handoff, and give that ID
+highest priority. Do not change any other safety or recovery rule.
+
+Otherwise, resolve in this order:
 
 1. explicit ID;
 2. the most recently planned, saved, or run feature in the conversation;

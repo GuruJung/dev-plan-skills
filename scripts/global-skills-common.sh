@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-skill_names=(plan-feature save-approved-plan run-feature)
+skill_names=(plan-feature plan-run-feature save-approved-plan run-feature)
 
 fail() {
   printf 'error: %s\n' "$*" >&2
@@ -170,17 +170,22 @@ acquire_workflow_lock() {
 }
 
 validate_sources() {
-  local skill source metadata
+  local skill source metadata expected_implicit
 
   for skill in "${skill_names[@]}"; do
     source=$source_root/$skill
     metadata=$source/agents/openai.yaml
+    expected_implicit=false
+    if [[ "$skill" == plan-run-feature ]]; then
+      expected_implicit=true
+    fi
 
     [[ -d "$source" && ! -L "$source" ]] || fail "missing skill source: $source"
     [[ -f "$source/SKILL.md" ]] || fail "missing SKILL.md: $source/SKILL.md"
     [[ -f "$metadata" ]] || fail "missing agent metadata: $metadata"
-    grep -Eq '^[[:space:]]*allow_implicit_invocation:[[:space:]]*false[[:space:]]*$' \
-      "$metadata" || fail "explicit-only policy missing: $metadata"
+    grep -Eq \
+      "^[[:space:]]*allow_implicit_invocation:[[:space:]]*$expected_implicit[[:space:]]*$" \
+      "$metadata" || fail "unexpected implicit invocation policy: $metadata"
   done
 
   [[ -x "$source_root/run-feature/scripts/integrate-feature.sh" ]] ||
