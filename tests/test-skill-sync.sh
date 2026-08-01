@@ -28,6 +28,11 @@ make_case() {
     "$repo_root/scripts/check-skill-sync.sh" \
     "$repo_root/scripts/record-skill-sync.sh" \
     "$case_root/scripts/"
+  git -C "$case_root" init -q
+  git -C "$case_root" config user.name 'Skill Sync Test'
+  git -C "$case_root" config user.email 'skill-sync-test@example.invalid'
+  git -C "$case_root" add .
+  git -C "$case_root" commit -qm 'Record synchronization baseline'
 }
 
 expect_failure() {
@@ -63,6 +68,18 @@ expect_failure 'recorder accepted a one-sided English change' \
   "$case_root/scripts/record-skill-sync.sh"
 cmp -s -- "$case_root/state-before" "$case_root/skills-ko/.sync-state.sha256" ||
   fail 'one-sided English record changed the synchronization state'
+
+# A modified state file cannot make a one-sided source change look paired.
+make_case modified-state
+printf -v invalid_hash '%064d' 0
+sed -i "1s/^[0-9a-f]\{64\}/$invalid_hash/" \
+  "$case_root/skills-ko/.sync-state.sha256"
+printf '\n한글 원본 변경\n' >>"$case_root/skills-ko/plan-feature/SKILL.md"
+cp -- "$case_root/skills-ko/.sync-state.sha256" "$case_root/state-before"
+expect_failure 'recorder trusted synchronization state that differs from HEAD' \
+  "$case_root/scripts/record-skill-sync.sh"
+cmp -s -- "$case_root/state-before" "$case_root/skills-ko/.sync-state.sha256" ||
+  fail 'record overwrote synchronization state that differs from HEAD'
 
 # A paired change can be recorded and then passes verification.
 make_case paired-change

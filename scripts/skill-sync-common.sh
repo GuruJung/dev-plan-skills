@@ -112,6 +112,13 @@ validate_paired_changes_from_recorded_state() {
 
   [[ -f "$sync_state_path" && ! -L "$sync_state_path" ]] ||
     sync_fail "missing or invalid sync state: $sync_state_path"
+  command -v git >/dev/null 2>&1 || sync_fail 'required command not found: git'
+  git -C "$sync_repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
+    sync_fail "skill sync root is not a Git worktree: $sync_repo_root"
+  git -C "$sync_repo_root" cat-file -e HEAD:skills-ko/.sync-state.sha256 2>/dev/null ||
+    sync_fail 'sync state is not tracked in HEAD; restore it from Git'
+  git -C "$sync_repo_root" diff --quiet HEAD -- skills-ko/.sync-state.sha256 ||
+    sync_fail 'sync state differs from HEAD; restore it from Git before recording'
 
   while read -r hash path extra; do
     [[ -z "${extra:-}" && "$hash" =~ ^[0-9a-f]{64}$ ]] ||
