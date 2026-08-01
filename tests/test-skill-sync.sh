@@ -107,14 +107,14 @@ cp -- "$case_root/skills/plan-feature/SKILL.md" \
 expect_failure 'recorder accepted an English-only Korean source' \
   "$case_root/scripts/record-skill-sync.sh"
 
-# Missing state requires an explicit one-time initialization and cannot be overwritten that way.
-make_case initialize-state
+# Missing state cannot be recreated from unverified current content.
+make_case missing-state
 rm -- "$case_root/skills-ko/.sync-state.sha256"
-expect_failure 'recorder initialized missing state without an explicit flag' \
+expect_failure 'recorder accepted missing synchronization state' \
   "$case_root/scripts/record-skill-sync.sh"
-"$case_root/scripts/record-skill-sync.sh" --initialize >/dev/null
-"$case_root/scripts/check-skill-sync.sh" >/dev/null
-expect_failure 'recorder initialized over existing state' \
+expect_failure 'recorder accepted an unsupported initialization flag' \
   "$case_root/scripts/record-skill-sync.sh" --initialize
+expect_failure 'checker accepted missing synchronization state' \
+  "$case_root/scripts/check-skill-sync.sh"
 
 printf 'All skill synchronization tests passed.\n'
