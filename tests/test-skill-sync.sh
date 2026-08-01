@@ -70,6 +70,7 @@ assert_contains "$repo_root/skills/run-feature/SKILL.md" \
   'plan threshold, default 300 seconds:'
 assert_absent "$repo_root/skills" 'smoke_threshold_seconds: 60'
 assert_absent "$repo_root/skills" 'default 60 seconds'
+assert_absent "$repo_root/skills" 'defaulting to 60 seconds'
 assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 60'
 assert_absent "$repo_root/skills-ko" '기본값이 60초'
 assert_absent "$repo_root/skills-ko" '기본 60초'
