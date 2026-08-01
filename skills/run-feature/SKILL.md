@@ -8,6 +8,10 @@ description: Prepare, implement, evaluate, independently review, and integrate a
 Keep implementation ownership in the foreground chat. Create a subagent only for independent
 review. Do not create a separate implementation agent.
 
+Use the user's current conversation language for questions, status, and prose artifacts unless the
+user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and
+machine-readable schema keys exactly.
+
 ## Resolve the feature
 
 Accept `$run-feature [<feature-id>]`. Resolve in this order:

@@ -7,6 +7,10 @@ description: Interview the user and produce a decision-complete implementation p
 
 Plan only. Do not write files, create branches, implement, or run mutating commands.
 
+Use the user's current conversation language for questions, status, and prose artifacts unless the
+user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and
+machine-readable schema keys exactly.
+
 ## Require Plan mode
 
 If Plan mode is not active, ask the user to switch to Plan mode and invoke `$plan-feature` again.
@@ -21,11 +25,14 @@ After this exploration, make the first intent question a required choice:
 
 - `standard`: a bounded implementation with explicit acceptance and eval criteria;
 - `goal-loop`: repeated implementation or tuning against a measurable target;
-- `기타`: a question or task outside this feature workflow.
+- `other`: a question or task outside this feature workflow.
+
+Localize the displayed labels to the current conversation language while preserving these internal
+values.
 
 Use the structured user-input tool when available.
 
-If the user chooses `기타`, stop applying this workflow. Do not generate a feature ID, feature
+If the user chooses `other`, stop applying this workflow. Do not generate a feature ID, feature
 artifact, or save handoff. Continue the user's request with the native behavior of the active mode.
 
 ## Interview a standard feature
@@ -104,6 +111,6 @@ smoke_threshold_seconds: 60
 For a goal loop, include a `Goal Contract` section containing every approved experiment field,
 including the native objective and budgets.
 
-Produce the decision-complete plan in the required Plan-mode format. End with:
-
-> Default 모드로 전환한 뒤 이 계획을 저장하려면 `$save-approved-plan`을 명시적으로 호출하세요.
+Produce the decision-complete plan in the required Plan-mode format. End with a localized
+blockquote telling the user to switch to Default mode and explicitly invoke `$save-approved-plan`
+to save the plan.

@@ -75,6 +75,7 @@ assert_current_install() {
     diff -qr -- "$source_root/$skill" "$root/skills/$skill" >/dev/null ||
       fail "installed copy differs from source: $skill"
   done
+  assert_absent "$root/skills/skills-ko"
 }
 
 # A path containing spaces supports fresh install, check, and idempotent reinstall.

@@ -1,8 +1,28 @@
 # Feature Workflow Skills
 
 사용자와 함께 계획을 확정한 뒤 구현·평가·독립 리뷰·통합을 수행하는 Codex 스킬
-모음이다. `skills/`가 유일한 원본이며, 모든 스킬은 `$plan-feature`,
-`$save-approved-plan`, `$run-feature`처럼 명시적으로 호출해야 한다.
+모음이다. `skills-ko/`의 `SKILL.md`가 편집 기준인 한글 원본이고, `skills/`는 전역으로
+설치되는 영문 대응본이다. 모든 스킬은 `$plan-feature`, `$save-approved-plan`,
+`$run-feature`처럼 명시적으로 호출해야 한다.
+
+## 스킬 작성 언어와 동기화
+
+스킬의 행동을 수정할 때는 먼저 `skills-ko/<skill>/SKILL.md`에 의도를 한국어로
+반영하고, 같은 변경에서 `skills/<skill>/SKILL.md`를 의미가 같도록 영어로 갱신한다.
+명령, 경로, 식별자, enum 값, YAML/JSON 키는 번역하지 않는다. `agents/openai.yaml`과
+실행 스크립트는 대응 한글 파일을 두지 않고 영어로 직접 관리한다.
+
+Codex가 문맥에 맞게 번역한 두 파일을 대조한 뒤 동기화 상태를 기록하고 검사한다.
+
+```bash
+scripts/record-skill-sync.sh
+scripts/check-skill-sync.sh
+tests/test-skill-sync.sh
+```
+
+기록 명령은 번역을 수행하지 않으며, 파일 쌍과 언어 경계를 검증한 뒤 현재 체크섬만
+원자적으로 저장한다. 의미 일치는 구현 검토와 독립 리뷰에서 확인한다. 설치 스크립트는
+계속 `skills/`만 복사하므로 한글 원본과 개발 지침은 전역 설치에 포함되지 않는다.
 
 ## 전역 설치
 

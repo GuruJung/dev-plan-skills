@@ -7,6 +7,10 @@ description: Persist the latest finalized standard or goal-loop feature plan int
 
 Save one finalized feature plan only. Never treat saving as implementation approval.
 
+Use the user's current conversation language for questions, status, and prose artifacts unless the
+user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and
+machine-readable schema keys exactly.
+
 ## Check the handoff
 
 If Plan mode is active, ask the user to switch to Default mode and invoke `$save-approved-plan`
