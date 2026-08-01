@@ -133,19 +133,45 @@ feature eval contract even if individual measurement commands already passed.
 ## Run independent review
 
 After full eval passes, create one fresh reviewer subagent with isolated implementation context
-when supported. Do not try to resolve, search for, or install `$review-agent` in the foreground
-session. Tell the reviewer to invoke `$review-agent` explicitly when that skill is available to it;
-otherwise it must perform the review contract below directly. Provide only:
+when supported and tell it to perform the review contract below directly. Provide only:
 
 - `plan.md` and acceptance criteria;
 - comparison ref and feature HEAD;
 - complete merge diff target;
 - eval results.
 
-The reviewer must independently inspect the supplied refs and diff, verify the acceptance criteria,
-and look for correctness, regressions, unsafe behavior, missing tests, and maintainability problems.
-It must return concrete findings with file and line evidence, classified P0-P3, followed by an
-explicit acceptance decision. No findings is a valid result only after that inspection.
+The reviewer must work read-only. It must not modify files, create commits, push branches, post
+review comments, or delegate to another agent. It must read the applicable `AGENTS.md`, supplied
+plan, acceptance criteria, and eval results.
+
+It must compute the merge base of the supplied feature HEAD and comparison ref, then inspect the
+complete change that would merge with `git diff <merge-base-sha> <feature-head>`. It must read
+enough surrounding code for every changed path and continue through the whole diff after finding
+the first issue. It must inspect relevant tests and call sites to verify that each finding is real
+and actionable. It must independently verify the acceptance criteria and look for correctness,
+security, performance, regression, unsafe behavior, missing tests, and maintainability problems.
+
+Report a finding only when all of these are true:
+
+- it has a meaningful correctness, security, performance, or maintainability impact;
+- it is discrete and actionable;
+- the reviewed change introduced it;
+- the affected scenario or call path can be demonstrated from the code;
+- the author would probably fix it if they knew about it.
+
+Do not report speculative concerns, pre-existing problems, intentional behavior changes, or style
+nits that do not obscure the code.
+
+Use these priorities: P0 for a universal release blocker or critical failure, P1 for an urgent
+defect that should be fixed next, P2 for an ordinary defect that should be fixed, and P3 for a
+low-impact issue that is still worth fixing.
+
+Present findings first, ordered by severity. Use
+`[P1] <imperative finding title> - path/to/file:line` followed by a short paragraph that explains
+the affected scenario and why the behavior is wrong. Keep the cited lines as small as possible and
+make them overlap the reviewed diff. If there are no qualifying findings, say so without inventing
+one. After the findings, return an overall assessment, any material test gaps or residual risks,
+and an explicit acceptance decision. Accept only when no P0-P2 findings remain; otherwise reject.
 
 Keep the same reviewer for follow-up during one uninterrupted review stage. If unavailable after
 resume, create a fresh reviewer.
@@ -154,9 +180,8 @@ resume, create a fresh reviewer.
 - Record P3 in `review.md` and `state.json`; do not block integration on P3.
 - Require no remaining P0-P2.
 
-If the reviewer facility itself is unavailable, stop before integration. Absence of the optional
-`$review-agent` skill alone is not a blocker. Do not search unrelated directories or plugin
-catalogs, and do not substitute foreground self-review.
+If the reviewer facility itself is unavailable, stop before integration. Do not substitute
+foreground self-review.
 
 ## Revalidate against latest main
 

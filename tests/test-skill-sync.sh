@@ -75,6 +75,18 @@ assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 60'
 assert_absent "$repo_root/skills-ko" '기본값이 60초'
 assert_absent "$repo_root/skills-ko" '기본 60초'
 
+# Independent review uses a complete embedded contract without an optional skill dependency.
+assert_absent "$repo_root/skills-ko/run-feature" '$review-agent'
+assert_absent "$repo_root/skills/run-feature" '$review-agent'
+assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
+  '첫 문제를 찾은 뒤에도 전체 diff를 끝까지 확인하세요.'
+assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
+  '검토 대상 변경으로 인해 새로 발생했습니다.'
+assert_contains "$repo_root/skills/run-feature/SKILL.md" \
+  'continue through the whole diff after finding'
+assert_contains "$repo_root/skills/run-feature/SKILL.md" \
+  'the reviewed change introduced it;'
+
 # A valid repository can record and verify a complete synchronization state.
 make_case valid
 "$case_root/scripts/record-skill-sync.sh" >/dev/null

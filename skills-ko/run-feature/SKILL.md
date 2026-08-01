@@ -106,14 +106,30 @@ authoritative eval과 review 결과를 깨끗한 feature HEAD에 연결하세요
 
 ## 독립 리뷰 실행
 
-전체 eval이 통과하면 지원되는 경우 구현 context가 격리된 새로운 reviewer subagent 하나를 생성하세요. foreground 세션에서 `$review-agent`를 찾거나 검색하거나 설치하지 마세요. reviewer에게 해당 skill이 있으면 `$review-agent`를 명시적으로 호출하도록 하고, 없으면 아래 review 계약을 직접 수행하게 하세요. 다음 정보만 제공하세요.
+전체 eval이 통과하면 지원되는 경우 구현 context가 격리된 새로운 reviewer subagent 하나를 생성하고 아래 review 계약을 직접 수행하도록 지시하세요. 다음 정보만 제공하세요.
 
 - `plan.md`와 acceptance criteria
 - comparison ref와 feature HEAD
 - 전체 merge diff target
 - eval results
 
-reviewer는 제공된 refs와 diff를 독립적으로 조사하고 acceptance criteria를 검증하며 correctness, regression, unsafe behavior, missing tests, maintainability 문제를 찾아야 합니다. file 및 line 근거가 있고 P0-P3로 분류된 구체적인 findings 뒤에 명시적인 acceptance decision을 반환해야 합니다. 조사를 수행한 뒤라면 findings가 없는 것도 유효합니다.
+reviewer는 읽기 전용으로 작업해야 합니다. 파일을 수정하거나 commit, push, review comment 게시, 다른 agent로의 위임을 하지 마세요. 적용되는 `AGENTS.md`, 제공된 계획, acceptance criteria, eval results를 읽으세요.
+
+제공된 feature HEAD와 comparison ref의 merge-base를 계산하고 `git diff <merge-base-sha> <feature-head>`로 실제 병합될 전체 diff를 조사하세요. 모든 changed path의 주변 코드를 충분히 읽고, 첫 문제를 찾은 뒤에도 전체 diff를 끝까지 확인하세요. 관련 테스트와 call site를 조사해 각 finding이 실제이고 actionable한지 검증하세요. acceptance criteria를 독립적으로 확인하고 correctness, security, performance, regression, unsafe behavior, missing tests, maintainability 문제를 찾으세요.
+
+다음 조건을 모두 충족하는 문제만 finding으로 보고하세요.
+
+- 의미 있는 correctness, security, performance 또는 maintainability 영향이 있습니다.
+- 분리 가능하고 수정할 수 있습니다.
+- 검토 대상 변경으로 인해 새로 발생했습니다.
+- 영향받는 scenario나 call path를 코드에서 입증할 수 있습니다.
+- 작성자가 알게 되면 고칠 가능성이 높습니다.
+
+추측성 우려, 기존 문제, 의도된 동작 변경, 코드를 이해하기 어렵게 만들지 않는 style nit는 보고하지 마세요.
+
+P0는 보편적인 release blocker 또는 critical failure, P1은 다음에 고쳐야 하는 urgent defect, P2는 고쳐야 하는 일반 defect, P3는 여전히 고칠 가치가 있는 low-impact 문제를 뜻합니다.
+
+findings를 심각도순으로 먼저 제시하세요. 각 finding은 `[P1] <명령형 제목> - path/to/file:line` 형식과 영향받는 scenario 및 잘못된 이유를 설명하는 짧은 단락을 사용하세요. 인용 line은 가능한 한 작고 reviewed diff와 겹쳐야 합니다. qualifying finding이 없으면 만들지 말고 없다고 명시하세요. findings 뒤에는 전체 평가, 중요한 test gap이나 residual risk, 명시적인 acceptance decision을 반환하세요. P0-P2가 남아 있지 않을 때만 accept하고, 그렇지 않으면 reject하세요.
 
 중단 없이 이어지는 한 review 단계에서는 같은 reviewer를 follow-up에 사용하세요. resume 후 사용할 수 없다면 새 reviewer를 만드세요.
 
@@ -121,7 +137,7 @@ reviewer는 제공된 refs와 diff를 독립적으로 조사하고 acceptance cr
 - P3는 `review.md`와 `state.json`에 기록하고 integration을 막지 않습니다.
 - 남아 있는 P0-P2가 없어야 합니다.
 
-reviewer 기능 자체를 사용할 수 없으면 integration 전에 중단하세요. 선택 사항인 `$review-agent` skill이 없다는 사실만으로는 막히지 않습니다. 관련 없는 directory나 plugin catalog를 검색하지 말고 foreground self-review로 대체하지 마세요.
+reviewer 기능 자체를 사용할 수 없으면 integration 전에 중단하세요. foreground self-review로 대체하지 마세요.
 
 ## 최신 main 기준 재검증
 
