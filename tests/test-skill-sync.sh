@@ -63,6 +63,18 @@ assert_absent() {
   fi
 }
 
+# Planning infers a clear feature type and only asks between the two supported types when unclear.
+assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
+  '유형이 명확하면 `standard` 또는 `goal-loop`를 직접 선택하고'
+assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
+  '조사 후에도 유형이 불명확할 때만 `standard`와 `goal-loop` 중 하나를 반드시 선택하게 하세요.'
+assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
+  'When the type is clear, select `standard` or `goal-loop` directly'
+assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
+  'Only when the type remains unclear after exploration, require the user to choose between `standard`'
+assert_absent "$repo_root/skills-ko/plan-feature" '`other`'
+assert_absent "$repo_root/skills/plan-feature" '`other`'
+
 # Planning and execution agree on the five-minute default in both authoring languages.
 assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
   '기본값이 300초인 smoke 기준 시간'

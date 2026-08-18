@@ -21,19 +21,20 @@ Delegation from `$plan-run-feature` also requires Plan mode. Stop without changi
 Inspect the repository before asking questions. Read applicable instructions, relevant code,
 configuration, tests, and existing conventions. Resolve discoverable facts directly.
 
-After this exploration, make the first intent question a required choice:
+After this exploration, classify the feature type from the repository evidence and the user's
+request:
 
 - `standard`: a bounded implementation with explicit acceptance and eval criteria;
 - `goal-loop`: repeated implementation or tuning against a measurable target;
-- `other`: a question or task outside this feature workflow.
 
-Localize the displayed labels to the current conversation language while preserving these internal
-values.
+When the type is clear, select `standard` or `goal-loop` directly, briefly tell the user which type
+you selected, and proceed immediately with that interview. Do not ask a feature-type question.
 
-Use the structured user-input tool when available.
+Only when the type remains unclear after exploration, require the user to choose between `standard`
+and `goal-loop`. Localize the displayed labels to the current conversation language while
+preserving these internal values. Use the structured user-input tool when available.
 
-If the user chooses `other`, stop applying this workflow. Do not generate a feature ID, feature
-artifact, or save handoff. Continue the user's request with the native behavior of the active mode.
+Do not offer any choice other than `standard` or `goal-loop`.
 
 ## Interview a standard feature
 
