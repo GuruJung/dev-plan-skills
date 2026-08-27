@@ -13,6 +13,14 @@ path_exists() {
   [[ -e "$1" || -L "$1" ]]
 }
 
+is_retired_skill() {
+  local candidate=$1 retired
+  for retired in "${retired_skill_names[@]}"; do
+    [[ "$candidate" == "$retired" ]] && return 0
+  done
+  return 1
+}
+
 assert_plain_directory_or_absent() {
   local path=$1
 
@@ -90,12 +98,22 @@ create_backup_set() {
   for skill in "${managed_skill_names[@]}"; do
     target=$target_root/$skill
     if path_exists "$target"; then
-      copy_directory_contents "$target" "$temporary_path/$skill"
-      directories_equal "$target" "$temporary_path/$skill" || {
-        rm -rf -- "$temporary_path"
-        fail "backup verification failed for $skill"
-        return
-      }
+      if [[ -L "$target" ]] && is_retired_skill "$skill"; then
+        cp -a -- "$target" "$temporary_path/$skill"
+        [[ -L "$temporary_path/$skill" ]] &&
+          [[ $(readlink -- "$target") == $(readlink -- "$temporary_path/$skill") ]] || {
+          rm -rf -- "$temporary_path"
+          fail "backup verification failed for retired link $skill"
+          return
+        }
+      else
+        copy_directory_contents "$target" "$temporary_path/$skill"
+        directories_equal "$target" "$temporary_path/$skill" || {
+          rm -rf -- "$temporary_path"
+          fail "backup verification failed for $skill"
+          return
+        }
+      fi
     fi
   done
 

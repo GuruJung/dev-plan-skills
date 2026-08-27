@@ -71,7 +71,13 @@ done
 for skill in "${retired_skill_names[@]}"; do
   target=$target_root/$skill
   if [[ -L "$target" ]]; then
-    fail "refusing to retire symbolic-link target: $target"
+    actual=$(readlink -m -- "$target")
+    expected=$(readlink -m -- "$source_root/$skill")
+    [[ "$actual" == "$expected" ]] ||
+      fail "refusing to retire unmanaged symbolic link: $target"
+    has_existing=true
+    has_legacy_link=true
+    all_current=false
   elif [[ -e "$target" ]]; then
     [[ -d "$target" ]] || fail "retired target exists and is not a directory: $target"
     has_existing=true

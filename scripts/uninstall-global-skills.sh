@@ -39,7 +39,14 @@ has_existing=false
 for skill in "${managed_skill_names[@]}"; do
   target=$target_root/$skill
   if [[ -L "$target" ]]; then
-    fail "refusing to remove symbolic-link target: $target"
+    if ! is_retired_skill "$skill"; then
+      fail "refusing to remove symbolic-link target: $target"
+    fi
+    actual=$(readlink -m -- "$target")
+    expected=$(readlink -m -- "$source_root/$skill")
+    [[ "$actual" == "$expected" ]] ||
+      fail "refusing to remove unmanaged retired symbolic link: $target"
+    has_existing=true
   elif [[ -e "$target" ]]; then
     [[ -d "$target" ]] || fail "target exists and is not a directory: $target"
     has_existing=true
@@ -95,7 +102,7 @@ trap cleanup_transaction EXIT
 move_failed=false
 for skill in "${managed_skill_names[@]}"; do
   target=$target_root/$skill
-  if [[ -d "$target" ]]; then
+  if path_exists "$target"; then
     if ! mv -- "$target" "$transaction_dir/$skill"; then
       move_failed=true
       break

@@ -69,6 +69,15 @@ run_uninstall() {
     "$uninstall_script" "$@"
 }
 
+make_legacy_source() {
+  local destination=$1
+  mkdir -p -- "$destination"
+  cp -a -- "$repo_root/scripts" "$destination/"
+  cp -a -- "$source_root" "$destination/"
+  cp -a -- "$source_root/plan-feature" \
+    "$destination/skills/$retired_skill"
+}
+
 assert_current_install() {
   local root=$1 skill
   for skill in "${skill_names[@]}"; do
@@ -129,6 +138,47 @@ assert_directory "$retirement_backup/$retired_skill"
 grep -Fq 'retired installation sentinel' \
   "$retirement_backup/$retired_skill/SKILL.md" ||
   fail 'retirement backup did not preserve the removed skill'
+
+# Managed legacy links are retired whether their old source still exists or is dangling.
+legacy_live_source=$test_root/'legacy live source'
+legacy_live_root=$test_root/'legacy live root'
+make_legacy_source "$legacy_live_source"
+mkdir -p -- "$legacy_live_root/skills"
+ln -s -- "$legacy_live_source/skills/$retired_skill" \
+  "$legacy_live_root/skills/$retired_skill"
+FEATURE_WORKFLOW_TARGET_ROOT="$legacy_live_root/skills" \
+  FEATURE_WORKFLOW_BACKUP_ROOT="$legacy_live_root/backups" \
+  "$legacy_live_source/scripts/install-global-skills.sh"
+assert_current_install "$legacy_live_root"
+legacy_live_backup=$(newest_backup "$legacy_live_root/backups")
+[[ -L "$legacy_live_backup/$retired_skill" ]] ||
+  fail 'live retired link was not preserved in the backup'
+
+legacy_dangling_source=$test_root/'legacy dangling source'
+legacy_dangling_root=$test_root/'legacy dangling root'
+make_legacy_source "$legacy_dangling_source"
+mkdir -p -- "$legacy_dangling_root/skills"
+ln -s -- "$legacy_dangling_source/skills/$retired_skill" \
+  "$legacy_dangling_root/skills/$retired_skill"
+rm -rf -- "$legacy_dangling_source/skills/$retired_skill"
+FEATURE_WORKFLOW_TARGET_ROOT="$legacy_dangling_root/skills" \
+  FEATURE_WORKFLOW_BACKUP_ROOT="$legacy_dangling_root/backups" \
+  "$legacy_dangling_source/scripts/uninstall-global-skills.sh"
+assert_absent "$legacy_dangling_root/skills/$retired_skill"
+legacy_dangling_backup=$(newest_backup "$legacy_dangling_root/backups")
+[[ -L "$legacy_dangling_backup/$retired_skill" ]] ||
+  fail 'dangling retired link was not preserved in the backup'
+
+unmanaged_retired_root=$test_root/'unmanaged retired root'
+unmanaged_retired_target=$test_root/'unmanaged retired target'
+mkdir -p -- "$unmanaged_retired_root/skills" "$unmanaged_retired_target"
+ln -s -- "$unmanaged_retired_target" \
+  "$unmanaged_retired_root/skills/$retired_skill"
+if run_install "$unmanaged_retired_root" >/dev/null 2>&1; then
+  fail 'installer accepted an unmanaged retired symbolic link'
+fi
+[[ -L "$unmanaged_retired_root/skills/$retired_skill" ]] ||
+  fail 'unmanaged retired symbolic link was changed'
 
 # Managed legacy links become independent copies and their dereferenced contents are backed up.
 migration_root=$test_root/'migration root'
