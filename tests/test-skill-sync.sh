@@ -8,11 +8,11 @@ fail() {
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
-test_root=$(mktemp -d "${TMPDIR:-/tmp}/feature workflow skill sync tests.XXXXXX")
+test_root=$(mktemp -d "${TMPDIR:-/tmp}/dev plan workflow skill sync tests.XXXXXX")
 
 cleanup() {
   case $test_root in
-    "${TMPDIR:-/tmp}"/'feature workflow skill sync tests.'*) rm -rf -- "$test_root" ;;
+    "${TMPDIR:-/tmp}"/'dev plan workflow skill sync tests.'*) rm -rf -- "$test_root" ;;
     *) printf 'Refusing unsafe test cleanup: %s\n' "$test_root" >&2 ;;
   esac
 }
@@ -129,7 +129,7 @@ assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation.'
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
-  'goal objective의 저장 계획 경로를 포함해 feature ID를 나타내는 모든 필드와 경로'
+  'frontmatter, `plan_path`, goal objective의 저장 계획 경로를 포함해 feature ID를 나타내는'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
   'every feature-ID-bearing field and path, including'
 assert_contains "$repo_root/skills/save-dev-plan/agents/openai.yaml" \
@@ -144,6 +144,50 @@ assert_absent "$repo_root/skills-ko/save-dev-plan" '$plan-run-feature'
 assert_absent "$repo_root/skills/save-dev-plan" '$plan-run-feature'
 assert_absent "$repo_root/skills-ko/implement-dev-plan" '$plan-run-feature'
 assert_absent "$repo_root/skills/implement-dev-plan" '$plan-run-feature'
+
+# Plans are saved temporarily, promoted into the feature branch, and retain user decisions.
+assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
+  'plan_path: docs/superpowers/plans/<id>/plan.md'
+assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
+  'plan_path: docs/superpowers/plans/<id>/plan.md'
+assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
+  '`사용자 결정 사항` 또는 `User Decisions` 섹션을 포함하세요.'
+assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
+  'Include a localized `User Decisions` section in every plan.'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '<git-common-dir>/dev-plan-workflow/features/<id>/'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  '<git-common-dir>/dev-plan-workflow/features/<id>/'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  '`docs(plan): add <id>` commit'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'creates commit `docs(plan): add <id>`'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  'scripts/promote-plan.sh'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'scripts/promote-plan.sh'
+
+# The canonical installation namespace is renamed without legacy aliases.
+assert_contains "$repo_root/scripts/global-skills-common.sh" \
+  'DEV_PLAN_WORKFLOW_TARGET_ROOT'
+assert_contains "$repo_root/scripts/global-skills-common.sh" \
+  '.agents/skill-backups/dev-plan-workflow'
+assert_contains "$repo_root/scripts/global-skills-common.sh" \
+  '.dev-plan-workflow-backup'
+assert_contains "$repo_root/scripts/global-skills-common.sh" \
+  'legacy FEATURE_WORKFLOW_* variables are unsupported; use DEV_PLAN_WORKFLOW_*'
+assert_absent "$repo_root/scripts" '.feature-workflow-'
+
+[[ -x "$repo_root/skills/save-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
+  fail 'save metadata migration helper is not executable'
+[[ -x "$repo_root/skills/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
+  fail 'implementation metadata migration helper is not executable'
+[[ -x "$repo_root/skills/implement-dev-plan/scripts/promote-plan.sh" ]] ||
+  fail 'plan promotion helper is not executable'
+cmp -s \
+  "$repo_root/skills/save-dev-plan/scripts/migrate-workflow-metadata.sh" \
+  "$repo_root/skills/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ||
+  fail 'metadata migration helper copies differ'
 
 # A valid repository can record and verify a complete synchronization state.
 make_case valid

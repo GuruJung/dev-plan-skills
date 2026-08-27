@@ -139,7 +139,7 @@ create_backup_set() {
     printf 'kind=%s\n' "$kind"
     printf 'created_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     printf 'skills=%s\n' "${managed_skill_names[*]}"
-  } >"$temporary_path/.feature-workflow-backup"
+  } >"$temporary_path/.dev-plan-workflow-backup"
 
   mv -- "$temporary_path" "$final_path"
   printf '%s\n' "$final_path"
@@ -158,7 +158,7 @@ prune_backups() {
       "$backup_root"/????????T??????Z-??????-migration \
       "$backup_root"/????????T??????Z-??????-uninstall; do
       [[ -d "$path" && ! -L "$path" ]] || continue
-      marker=$path/.feature-workflow-backup
+      marker=$path/.dev-plan-workflow-backup
       [[ -f "$marker" && ! -L "$marker" ]] || continue
       kind=${path##*-}
       grep -Fxq 'schema_version=1' "$marker" || continue
@@ -176,7 +176,7 @@ prune_backups() {
 make_transaction_directory() {
   local kind=$1 candidate
 
-  candidate="$target_parent/.feature-workflow-${kind}-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  candidate="$target_parent/.dev-plan-workflow-${kind}-$(date -u +%Y%m%dT%H%M%SZ)-$$"
   while path_exists "$candidate"; do
     candidate="$candidate-x"
   done
@@ -195,7 +195,7 @@ validate_roots() {
 }
 
 acquire_workflow_lock() {
-  local lock_path=$target_parent/.feature-workflow.lock
+  local lock_path=$target_parent/.dev-plan-workflow.lock
 
   command -v flock >/dev/null 2>&1 || fail 'required command not found: flock'
   mkdir -p -- "$target_parent"
@@ -227,15 +227,30 @@ validate_sources() {
 
   [[ -x "$source_root/implement-dev-plan/scripts/integrate-feature.sh" ]] ||
     fail 'integration helper is not executable'
+  [[ -x "$source_root/save-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
+    fail 'save metadata migration helper is not executable'
+  [[ -x "$source_root/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
+    fail 'implementation metadata migration helper is not executable'
+  [[ -x "$source_root/implement-dev-plan/scripts/promote-plan.sh" ]] ||
+    fail 'plan promotion helper is not executable'
+  cmp -s \
+    "$source_root/save-dev-plan/scripts/migrate-workflow-metadata.sh" \
+    "$source_root/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ||
+    fail 'metadata migration helper copies differ'
 }
 
 initialize_paths() {
+  if [[ -n ${FEATURE_WORKFLOW_TARGET_ROOT+x} ||
+        -n ${FEATURE_WORKFLOW_BACKUP_ROOT+x} ]]; then
+    fail 'legacy FEATURE_WORKFLOW_* variables are unsupported; use DEV_PLAN_WORKFLOW_*'
+    return
+  fi
   script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[1]}")" && pwd -P)
   repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
   source_root=$repo_root/skills
   user_home=${HOME:?HOME must be set}
-  target_root=${FEATURE_WORKFLOW_TARGET_ROOT:-$user_home/.agents/skills}
-  backup_root=${FEATURE_WORKFLOW_BACKUP_ROOT:-$user_home/.agents/skill-backups/feature-workflow}
+  target_root=${DEV_PLAN_WORKFLOW_TARGET_ROOT:-$user_home/.agents/skills}
+  backup_root=${DEV_PLAN_WORKFLOW_BACKUP_ROOT:-$user_home/.agents/skill-backups/dev-plan-workflow}
   target_parent=$(dirname -- "$target_root")
 
   [[ -n "$target_root" ]] || fail 'target root must not be empty'

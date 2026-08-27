@@ -17,13 +17,19 @@ machine-readable schema keys exactly.
 Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation. Resolve the feature ID in this
 order:
 
+Resolve the repository, locate the bundled `scripts/migrate-workflow-metadata.sh` relative to this
+SKILL.md, and invoke it by absolute path with `--repo <repository-path>`. Use only the returned
+`<git-common-dir>/dev-plan-workflow/`. If the legacy and canonical directories both exist or a
+legacy pending integration exists, stop without merging or deleting content.
+
 1. explicit ID;
 2. the most recently planned, saved, or run feature in the conversation;
 3. the feature associated with the current registered worktree;
 4. the only nonterminal feature;
 5. otherwise, show candidates and ask the user to choose.
 
-Reject an unknown ID. Read `plan.md` and `state.json`. Require `standard` or `goal-loop`.
+Reject an unknown ID. Read the temporary `plan.md` or its promoted tracked plan and `state.json`.
+Require `standard` or `goal-loop`.
 
 ## Prepare a planned feature
 
@@ -39,11 +45,35 @@ When state is `planned`, perform preparation before implementation:
 8. if both already exist and are consistently mapped, reuse them;
 9. if only one exists or either conflicts, stop without deleting, moving, resetting, or overwriting;
 10. otherwise create them with `git worktree add -b`;
-11. atomically set state to `prepared`, record the canonical worktree path, branch, checkpoint,
-    and timestamp.
+11. complete plan promotion as described below;
+12. atomically set state to `prepared`, recording the canonical worktree path, branch, plan-commit
+    checkpoint, and timestamp.
 
 Continue directly into implementation after successful preparation. Do not ask for an additional
 confirmation.
+
+## Promote the plan document
+
+Locate the bundled `scripts/promote-plan.sh` relative to this SKILL.md and invoke it by absolute
+path:
+
+```text
+scripts/promote-plan.sh \
+  --metadata-dir <git-common-dir>/dev-plan-workflow \
+  --feature-worktree <feature-path> \
+  --feature-id <id>
+```
+
+The helper atomically copies the temporary plan to
+`docs/superpowers/plans/<id>/plan.md`, verifies identical content, stages only that path, and
+creates commit `docs(plan): add <id>`. It removes the temporary `plan.md` only after verifying the
+commit and a clean worktree. It preserves the temporary plan and stops on any other staged,
+unstaged, or untracked change, a conflicting destination, a symlink, or commit failure.
+
+On re-entry, use the tracked plan as authoritative when it is the only copy and is committed at
+HEAD. When both temporary and destination copies exist, use the helper to verify equality and
+finish the interrupted promotion. Never overwrite either copy when they differ. Begin
+implementation, goal-loop baseline measurement, and checkpoints from the plan commit.
 
 Use the canonical feature worktree as the working root for every repository read, edit, command,
 test, and commit. Verify the expected branch before mutations. Modify main only through the
@@ -68,7 +98,7 @@ checkpoint, rerunning eval, restarting review, retrying integration, or re-plann
 
 Never discard, reset, or remove feature work without explicit approval.
 
-If `<git-common-dir>/feature-workflow/integration.pending` exists, block other integrations. For
+If `<git-common-dir>/dev-plan-workflow/integration.pending` exists, block other integrations. For
 the matching feature, offer:
 
 - rerun smoke with `--recover-pending smoke`;

@@ -37,10 +37,12 @@ Use the latest finalized `$create-dev-plan` plan in the conversation. Require:
 
 - a unique `feature_id`;
 - `feature_type` equal to `standard` or `goal-loop`;
+- `plan_path` in the form `docs/superpowers/plans/<id>/plan.md`;
 - scope, acceptance criteria, and implementation approach;
 - executable eval commands with success conditions;
 - an automatic smoke contract for every eval and at least one eval expected within the threshold;
 - an approved smoke threshold;
+- a localized `User Decisions` section;
 - a complete `Goal Contract` for `goal-loop`.
 
 If the plan is absent, incomplete, or outside the supported feature types, do not invent content.
@@ -48,13 +50,17 @@ Ask the user to return to Plan mode and invoke `$create-dev-plan`.
 
 ## Persist the feature
 
-1. Resolve the repository and absolute common Git directory.
-2. Reuse the finalized `YYYYMMDD-<slug>` ID. If it now collides, append the next numeric suffix
-   and consistently update the canonical ID in every feature-ID-bearing field and path, including
-   the saved-plan path in a goal objective. Do not rewrite unrelated prose that happens to contain
-   the same text.
-3. Create `<git-common-dir>/feature-workflow/features/<id>/`.
-4. Save the complete plan as `plan.md` without changing approved decisions.
+1. Resolve the repository, locate the bundled `scripts/migrate-workflow-metadata.sh` relative to
+   this SKILL.md, and invoke it by absolute path with `--repo <repository-path>`. Use only the
+   returned `<git-common-dir>/dev-plan-workflow/`. If the legacy and canonical directories both
+   exist or a legacy pending integration exists, stop without merging or deleting content.
+2. Reuse the finalized `YYYYMMDD-<slug>` ID. If it now collides in Git metadata or with
+   `docs/superpowers/plans/<id>/plan.md` in the main worktree, append the next numeric suffix and
+   consistently update the canonical ID in every feature-ID-bearing field and path, including
+   frontmatter, `plan_path`, and the saved-plan path in a goal objective. Do not rewrite unrelated
+   prose that happens to contain the same text.
+3. Create `<git-common-dir>/dev-plan-workflow/features/<id>/`.
+4. Save the complete plan as temporary `plan.md` without changing approved decisions.
 5. Create `state.json` atomically with:
 
    ```json
@@ -103,9 +109,11 @@ Ask the user to return to Plan mode and invoke `$create-dev-plan`.
    null.
 
 7. Use a temporary file in the destination directory followed by atomic rename for state writes.
-8. Do not create a branch or worktree, implement, test, commit, or push.
-9. For every invocation, report the saved ID and path, then show `$implement-dev-plan <id>` as the next
-   manual command. Do not invoke `$implement-dev-plan` or start branch creation, worktree preparation,
+8. Do not change the main worktree, a branch, or the index, and do not implement, test, commit, or
+   push.
+9. For every invocation, report the saved ID, temporary path, and eventual
+   `docs/superpowers/plans/<id>/plan.md` path. Then show `$implement-dev-plan <id>` as the next manual
+   command. Do not invoke `$implement-dev-plan` or start branch creation, worktree preparation,
    implementation, evaluation, or integration.
 
 Never overwrite an existing feature plan without explicit user approval.

@@ -10,7 +10,7 @@ validate_skill_sync_sources
 [[ -f "$sync_state_path" && ! -L "$sync_state_path" ]] ||
   sync_fail "missing or invalid sync state: $sync_state_path"
 
-expected_state=$(mktemp "${TMPDIR:-/tmp}/feature-workflow-sync.XXXXXX")
+expected_state=$(mktemp "${TMPDIR:-/tmp}/dev-plan-workflow-sync.XXXXXX")
 cleanup() {
   rm -f -- "$expected_state"
 }

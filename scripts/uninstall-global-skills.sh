@@ -85,7 +85,7 @@ cleanup_transaction() {
 
   if recover_uninstall; then
     case ${transaction_dir:-} in
-      "$target_parent"/.feature-workflow-uninstall-*)
+      "$target_parent"/.dev-plan-workflow-uninstall-*)
         rm -rf -- "$transaction_dir"
         ;;
     esac

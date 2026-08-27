@@ -129,7 +129,7 @@ current_main_branch=$(git -C "$main_root" symbolic-ref --quiet --short HEAD 2>/d
 }
 
 common_dir=$(git -C "$main_root" rev-parse --path-format=absolute --git-common-dir)
-workflow_dir=$common_dir/feature-workflow
+workflow_dir=$common_dir/dev-plan-workflow
 mkdir -p "$workflow_dir"
 lock_file=$workflow_dir/integration.lock
 pending_file=$workflow_dir/integration.pending

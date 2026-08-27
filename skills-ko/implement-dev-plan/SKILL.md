@@ -13,13 +13,20 @@ description: 저장된 표준 또는 목표 루프 개발 계획을 준비, 구�
 
 `$implement-dev-plan [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요. 기능 ID는 다음 순서로 찾으세요.
 
+저장소를 확인한 뒤 이 SKILL.md를 기준으로 bundled
+`scripts/migrate-workflow-metadata.sh`를 찾아 절대 경로로 `--repo <repository-path>`와 함께
+호출합니다. helper가 반환한 `<git-common-dir>/dev-plan-workflow/`만 사용하세요. legacy와
+canonical 디렉터리가 모두 있거나 legacy pending integration이 있으면 내용을 합치거나
+삭제하지 말고 중단하세요.
+
 1. 명시적인 ID
 2. 대화에서 가장 최근에 계획, 저장, 실행한 기능
 3. 현재 등록된 worktree와 연결된 기능
 4. terminal 상태가 아닌 유일한 기능
 5. 그 외에는 후보를 보여 주고 사용자에게 선택 요청
 
-알 수 없는 ID는 거부하세요. `plan.md`와 `state.json`을 읽고 `standard` 또는 `goal-loop`인지 요구하세요.
+알 수 없는 ID는 거부하세요. 임시 `plan.md` 또는 이미 승격된 tracked 계획과 `state.json`을
+읽고 `standard` 또는 `goal-loop`인지 요구하세요.
 
 ## 계획된 기능 준비
 
@@ -35,9 +42,34 @@ description: 저장된 표준 또는 목표 루프 개발 계획을 준비, 구�
 8. 둘 다 이미 있고 일관되게 연결되어 있으면 재사용합니다.
 9. 하나만 존재하거나 어느 쪽이든 충돌하면 삭제, 이동, reset, overwrite하지 말고 중단합니다.
 10. 그 외에는 `git worktree add -b`로 생성합니다.
-11. 상태를 `prepared`로 원자적으로 변경하고 canonical worktree 경로, branch, checkpoint, timestamp를 기록합니다.
+11. 아래 계획 문서 승격을 완료합니다.
+12. 상태를 `prepared`로 원자적으로 변경하고 canonical worktree 경로, branch, 계획 commit
+    checkpoint, timestamp를 기록합니다.
 
 준비가 성공하면 추가 확인 없이 바로 구현으로 계속하세요.
+
+## 계획 문서 승격
+
+이 SKILL.md를 기준으로 bundled `scripts/promote-plan.sh`를 찾아 절대 경로로 다음과 같이
+호출하세요.
+
+```text
+scripts/promote-plan.sh \
+  --metadata-dir <git-common-dir>/dev-plan-workflow \
+  --feature-worktree <feature-path> \
+  --feature-id <id>
+```
+
+helper는 임시 계획을 `docs/superpowers/plans/<id>/plan.md`에 원자적으로 복사해 같은 내용인지
+확인하고, 그 경로만 stage한 뒤 `docs(plan): add <id>` commit을 만듭니다. commit과 깨끗한
+worktree가 검증된 뒤에만 임시 `plan.md`를 제거합니다. 다른 staged, unstaged 또는 untracked
+변경, 다른 내용의 destination, symlink 또는 commit 실패가 있으면 임시 계획을 보존하고
+중단합니다.
+
+재진입 시 같은 destination만 남아 있고 HEAD에 commit되어 있으면 그 계획을 authoritative
+source로 사용하세요. 임시 계획과 destination이 모두 있으면 helper로 동일성을 확인하고
+중단된 승격을 끝내세요. 두 내용이 다르면 어느 쪽도 덮어쓰지 마세요. 계획 commit 이후의
+구현, goal-loop baseline과 checkpoint는 그 commit에서 시작합니다.
 
 저장소 읽기, 편집, 명령, 테스트, commit은 모두 canonical feature worktree를 작업 root로 사용하세요. 변경 전에 예상 branch인지 확인하세요. main은 문서화된 동기화 단계와 통합 helper를 통해서만 수정하세요.
 
@@ -57,7 +89,7 @@ Git을 source of truth로 취급하세요. 메타데이터가 일치하지 않�
 
 명시적인 승인 없이 feature 작업을 버리거나 reset 또는 제거하지 마세요.
 
-`<git-common-dir>/feature-workflow/integration.pending`이 있으면 다른 통합을 차단하세요. 해당 기능에는 다음을 제시하세요.
+`<git-common-dir>/dev-plan-workflow/integration.pending`이 있으면 다른 통합을 차단하세요. 해당 기능에는 다음을 제시하세요.
 
 - `--recover-pending smoke`로 smoke 재실행
 - `--recover-pending rollback`으로 main rollback

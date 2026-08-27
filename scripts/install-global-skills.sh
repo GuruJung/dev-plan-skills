@@ -146,7 +146,7 @@ cleanup_transaction() {
 
   if recover_installation; then
     case ${stage_dir:-} in
-      "$target_parent"/.feature-workflow-stage-*)
+      "$target_parent"/.dev-plan-workflow-stage-*)
         rm -rf -- "$stage_dir"
         ;;
     esac

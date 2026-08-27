@@ -21,7 +21,7 @@ count_backups() {
     "$root"/????????T??????Z-??????-migration \
     "$root"/????????T??????Z-??????-uninstall; do
     [[ -d "$path" && ! -L "$path" ]] || continue
-    marker=$path/.feature-workflow-backup
+    marker=$path/.dev-plan-workflow-backup
     [[ -f "$marker" && ! -L "$marker" ]] || continue
     kind=${path##*-}
     grep -Fxq 'schema_version=1' "$marker" || continue
@@ -44,11 +44,11 @@ source_root=$repo_root/skills
 skill_names=(create-dev-plan save-dev-plan implement-dev-plan)
 retired_skill_names=(plan-feature save-approved-plan run-feature plan-run-feature)
 retired_skill=plan-run-feature
-test_root=$(mktemp -d "${TMPDIR:-/tmp}/feature workflow skills tests.XXXXXX")
+test_root=$(mktemp -d "${TMPDIR:-/tmp}/dev plan workflow skills tests.XXXXXX")
 
 cleanup() {
   case $test_root in
-    "${TMPDIR:-/tmp}"/'feature workflow skills tests.'*) rm -rf -- "$test_root" ;;
+    "${TMPDIR:-/tmp}"/'dev plan workflow skills tests.'*) rm -rf -- "$test_root" ;;
     *) printf 'Refusing unsafe test cleanup: %s\n' "$test_root" >&2 ;;
   esac
 }
@@ -57,18 +57,32 @@ trap cleanup EXIT
 run_install() {
   local root=$1
   shift
-  FEATURE_WORKFLOW_TARGET_ROOT=$root/skills \
-    FEATURE_WORKFLOW_BACKUP_ROOT=$root/backups \
+  DEV_PLAN_WORKFLOW_TARGET_ROOT=$root/skills \
+    DEV_PLAN_WORKFLOW_BACKUP_ROOT=$root/backups \
     "$install_script" "$@"
 }
 
 run_uninstall() {
   local root=$1
   shift
-  FEATURE_WORKFLOW_TARGET_ROOT=$root/skills \
-    FEATURE_WORKFLOW_BACKUP_ROOT=$root/backups \
+  DEV_PLAN_WORKFLOW_TARGET_ROOT=$root/skills \
+    DEV_PLAN_WORKFLOW_BACKUP_ROOT=$root/backups \
     "$uninstall_script" "$@"
 }
+
+# Removed environment-variable names fail instead of silently targeting the default installation.
+legacy_namespace_root=$test_root/'removed environment namespace'
+mkdir -p -- "$legacy_namespace_root/home"
+if env -u DEV_PLAN_WORKFLOW_TARGET_ROOT -u DEV_PLAN_WORKFLOW_BACKUP_ROOT \
+  HOME="$legacy_namespace_root/home" \
+  FEATURE_WORKFLOW_TARGET_ROOT="$legacy_namespace_root/legacy-skills" \
+  FEATURE_WORKFLOW_BACKUP_ROOT="$legacy_namespace_root/legacy-backups" \
+  "$install_script" >/dev/null 2>&1; then
+  fail 'installer accepted removed FEATURE_WORKFLOW environment variables'
+fi
+assert_absent "$legacy_namespace_root/legacy-skills"
+assert_absent "$legacy_namespace_root/legacy-backups"
+assert_absent "$legacy_namespace_root/home/.agents/skills"
 
 make_legacy_source() {
   local destination=$1
@@ -202,8 +216,8 @@ make_legacy_source "$legacy_live_source"
 mkdir -p -- "$legacy_live_root/skills"
 ln -s -- "$legacy_live_source/skills/$retired_skill" \
   "$legacy_live_root/skills/$retired_skill"
-FEATURE_WORKFLOW_TARGET_ROOT="$legacy_live_root/skills" \
-  FEATURE_WORKFLOW_BACKUP_ROOT="$legacy_live_root/backups" \
+DEV_PLAN_WORKFLOW_TARGET_ROOT="$legacy_live_root/skills" \
+  DEV_PLAN_WORKFLOW_BACKUP_ROOT="$legacy_live_root/backups" \
   "$legacy_live_source/scripts/install-global-skills.sh"
 assert_current_install "$legacy_live_root"
 legacy_live_backup=$(newest_backup "$legacy_live_root/backups")
@@ -217,8 +231,8 @@ mkdir -p -- "$legacy_dangling_root/skills"
 ln -s -- "$legacy_dangling_source/skills/$retired_skill" \
   "$legacy_dangling_root/skills/$retired_skill"
 rm -rf -- "$legacy_dangling_source/skills/$retired_skill"
-FEATURE_WORKFLOW_TARGET_ROOT="$legacy_dangling_root/skills" \
-  FEATURE_WORKFLOW_BACKUP_ROOT="$legacy_dangling_root/backups" \
+DEV_PLAN_WORKFLOW_TARGET_ROOT="$legacy_dangling_root/skills" \
+  DEV_PLAN_WORKFLOW_BACKUP_ROOT="$legacy_dangling_root/backups" \
   "$legacy_dangling_source/scripts/uninstall-global-skills.sh"
 assert_absent "$legacy_dangling_root/skills/$retired_skill"
 legacy_dangling_backup=$(newest_backup "$legacy_dangling_root/backups")
@@ -302,7 +316,7 @@ lock_snapshot=$test_root/'lock victim snapshot'
 mkdir -p -- "$lock_root"
 printf 'pre-existing lock content must survive\n' >"$lock_victim"
 cp -- "$lock_victim" "$lock_snapshot"
-ln -- "$lock_victim" "$lock_root/.feature-workflow.lock"
+ln -- "$lock_victim" "$lock_root/.dev-plan-workflow.lock"
 run_install "$lock_root"
 cmp -s -- "$lock_snapshot" "$lock_victim" ||
   fail 'installer truncated a pre-existing lock inode'
@@ -319,8 +333,8 @@ mkdir -p -- "$fake_bin"
 real_mv=$(command -v mv)
 cp -- "$script_dir/fixtures/fake-mv.sh" "$fake_bin/mv"
 chmod 0755 "$fake_bin/mv"
-if FEATURE_WORKFLOW_TARGET_ROOT="$rollback_root/skills" \
-  FEATURE_WORKFLOW_BACKUP_ROOT="$rollback_root/backups" \
+if DEV_PLAN_WORKFLOW_TARGET_ROOT="$rollback_root/skills" \
+  DEV_PLAN_WORKFLOW_BACKUP_ROOT="$rollback_root/backups" \
   PATH="$fake_bin:$PATH" REAL_MV="$real_mv" \
   FAKE_FAIL_TARGET="$rollback_root/skills/implement-dev-plan" \
   FAKE_FAIL_MARKER="$test_root/failure-marker" \
@@ -345,8 +359,8 @@ cp -a -- "$source_root/create-dev-plan" \
   "$uninstall_rollback_root/skills/$retired_skill"
 printf 'must survive uninstall rollback\n' \
   >>"$uninstall_rollback_root/skills/create-dev-plan/SKILL.md"
-if FEATURE_WORKFLOW_TARGET_ROOT="$uninstall_rollback_root/skills" \
-  FEATURE_WORKFLOW_BACKUP_ROOT="$uninstall_rollback_root/backups" \
+if DEV_PLAN_WORKFLOW_TARGET_ROOT="$uninstall_rollback_root/skills" \
+  DEV_PLAN_WORKFLOW_BACKUP_ROOT="$uninstall_rollback_root/backups" \
   PATH="$fake_bin:$PATH" REAL_MV="$real_mv" \
   FAKE_FAIL_BASENAME=implement-dev-plan \
   FAKE_FAIL_MARKER="$test_root/uninstall-failure-marker" \

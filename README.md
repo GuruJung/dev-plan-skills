@@ -7,6 +7,13 @@
 선택한 같은 대화의 save-only handoff로 활성화한다. 저장 후 구현은 시작하지 않으며
 `$implement-dev-plan <id>`를 사용자가 별도로 호출한다.
 
+계획은 먼저 `<git-common-dir>/dev-plan-workflow/features/<id>/plan.md`에 임시 저장된다.
+구현을 시작하면 feature worktree의 `docs/superpowers/plans/<id>/plan.md`로 승격되어 계획
+전용 commit에 포함되고, 기능 통합과 함께 main에 들어간다. 실행 상태, 평가, 리뷰와 통합
+복구 자료는 계속 `<git-common-dir>/dev-plan-workflow/`에 둔다. 기존
+`<git-common-dir>/feature-workflow/`만 있으면 pending integration이 없을 때 전체 디렉터리를
+새 이름으로 한 번 원자적으로 이동한다.
+
 ## 스킬 작성 언어와 동기화
 
 스킬의 행동을 수정할 때는 먼저 `skills-ko/<skill>/SKILL.md`에 의도를 한국어로
@@ -51,9 +58,12 @@ retired 대상으로 백업한 뒤 제거한다. 실패 시에는 활성 세 스
 일반 디렉터리 설치본으로 전환된다. 다른 링크나 일반 파일은 덮어쓰지 않는다.
 
 설치·마이그레이션·제거 백업은
-`~/.agents/skill-backups/feature-workflow/`에 워크플로 전체 단위로 저장하며, 관리되는
-최근 5세트만 유지한다. 격리된 검증에는 `FEATURE_WORKFLOW_TARGET_ROOT`와
-`FEATURE_WORKFLOW_BACKUP_ROOT` 환경 변수를 함께 지정할 수 있다.
+`~/.agents/skill-backups/dev-plan-workflow/`에 워크플로 전체 단위로 저장하며, 관리되는
+최근 5세트만 유지한다. 격리된 검증에는 `DEV_PLAN_WORKFLOW_TARGET_ROOT`와
+`DEV_PLAN_WORKFLOW_BACKUP_ROOT` 환경 변수를 함께 지정할 수 있다. 이전
+`FEATURE_WORKFLOW_*`, `~/.agents/skill-backups/feature-workflow/`, `.feature-workflow-*`
+namespace는 호환하거나 자동 이전하지 않는다. 이전 환경변수가 설정되어 있으면 기본
+전역 경로로 조용히 fallback하지 않고 오류로 중단한다.
 
 ## 제거와 복원
 
@@ -82,10 +92,10 @@ test ! -e "$HOME/.agents/skills/implement-dev-plan"
 ```bash
 for skill in create-dev-plan save-dev-plan implement-dev-plan \
   plan-feature save-approved-plan run-feature plan-run-feature; do
-  if test -d "$HOME/.agents/skill-backups/feature-workflow/<backup-set>/$skill"; then
-    cp -a "$HOME/.agents/skill-backups/feature-workflow/<backup-set>/$skill" \
+  if test -d "$HOME/.agents/skill-backups/dev-plan-workflow/<backup-set>/$skill"; then
+    cp -a "$HOME/.agents/skill-backups/dev-plan-workflow/<backup-set>/$skill" \
       "$HOME/.agents/skills/$skill"
-    diff -qr "$HOME/.agents/skill-backups/feature-workflow/<backup-set>/$skill" \
+    diff -qr "$HOME/.agents/skill-backups/dev-plan-workflow/<backup-set>/$skill" \
       "$HOME/.agents/skills/$skill"
   fi
 done
