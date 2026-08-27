@@ -1,11 +1,11 @@
 ---
 name: save-approved-plan
-description: 확정된 최신 표준 또는 목표 루프 기능 계획을 준비나 구현 없이 공유 Git 메타데이터에 저장합니다. plan-feature로 계획을 완료한 뒤 사용자가 "$save-approved-plan"을 명시적으로 호출하거나 승인된 `$plan-run-feature` Default continuation이 저장을 위임한 경우에만 사용합니다.
+description: 확정된 최신 표준 또는 목표 루프 기능 계획을 준비나 구현 없이 공유 Git 메타데이터에 저장합니다. 사용자가 "$save-approved-plan"을 명시적으로 호출하거나 같은 대화의 승인된 `$plan-feature` save-only handoff가 저장을 위임한 경우에만 사용합니다.
 ---
 
 # 승인된 계획 저장
 
-확정된 기능 계획 하나만 저장하세요. 저장 자체를 구현 승인으로 취급하지 마세요. 승인된 `$plan-run-feature` continuation의 별도 구현 요청만 후속 실행도 승인합니다.
+확정된 기능 계획 하나만 저장하세요. 명시 호출과 handoff 호출 모두 저장 전용입니다. 저장을 구현 승인으로 취급하거나 `$run-feature`를 직접 호출하지 마세요.
 
 사용자가 다른 언어를 명시적으로 요청하지 않는 한 질문, 상태 안내, 서술형 산출물에는 사용자의 현재 대화 언어를 사용하세요. 명령, 식별자, 경로, enum 값, 기계 판독용 스키마 키는 원형을 정확히 유지하세요.
 
@@ -13,7 +13,22 @@ description: 확정된 최신 표준 또는 목표 루프 기능 계획을 준�
 
 Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전환하고 `$save-approved-plan`을 다시 호출하도록 요청하세요. 파일을 쓰지 마세요.
 
-일반 호출에서는 사용자가 `$save-approved-plan`을 명시적으로 호출해야 합니다. 위임 호출은 같은 대화에서 사용자가 명시적으로 시작한 `$plan-run-feature`의 최신 확정 계획에 `execution_handoff: plan-run-feature`가 있고, 사용자가 Default 모드에서 그 계획의 구현을 요청한 경우에만 허용하세요. 조건이 부족하면 파일을 쓰지 마세요.
+다음 중 하나일 때만 호출을 허용하세요.
+
+1. 사용자가 `$save-approved-plan`을 명시적으로 호출했습니다.
+2. 같은 대화의 최신 확정 `$plan-feature` 계획에 아래 handoff가 있고, 사용자가 host의
+   "Implement this plan" 동작을 선택한 뒤 Default 모드로 전환됐습니다.
+
+   ```yaml
+   execution_handoff:
+     skill: save-approved-plan
+     authorization: explicit-user-selection
+     automatic_trigger: implement-this-plan
+     continuation: save-only
+   ```
+
+handoff marker만으로 사용자 선택을 추정하지 마세요. handoff는 새 대화로 이어지지 않으며,
+그 경우 명시 호출을 요구하세요. 조건이 부족하면 파일을 쓰지 마세요.
 
 대화에서 가장 최근에 확정된 `$plan-feature` 계획을 사용하세요. 다음을 요구하세요.
 
@@ -21,7 +36,7 @@ Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전�
 - `standard` 또는 `goal-loop`인 `feature_type`
 - 범위, 승인 기준, 구현 접근법
 - 성공 조건이 있는 실행 가능한 평가 명령
-- 평가별 병합 후 선택과 적어도 하나의 사용 가능한 smoke
+- 모든 eval에 적용되는 자동 smoke 계약과 기준 시간 이내 실행이 예상되는 eval 하나 이상
 - 승인된 smoke 기준 시간
 - `goal-loop`인 경우 완전한 `Goal Contract`
 
@@ -81,6 +96,8 @@ Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전�
 
 7. 상태 파일을 쓸 때 destination 디렉터리의 임시 파일을 사용한 뒤 atomic rename하세요.
 8. branch나 worktree를 만들거나, 구현, 테스트, commit, push하지 마세요.
-9. 일반 호출에서는 저장된 ID와 경로를 보고한 뒤 다음 명시적 명령으로 `$run-feature <id>`를 보여 주세요. 승인된 `$plan-run-feature` 위임에서는 resolved ID를 orchestrator에 반환하고 추가 확인 없이 후속 실행을 허용하세요.
+9. 호출 방식과 관계없이 저장된 ID와 경로를 보고한 뒤 다음 수동 명령으로
+   `$run-feature <id>`를 보여 주세요. `$run-feature`를 호출하거나 branch, worktree, 구현,
+   평가 또는 통합을 시작하지 마세요.
 
 명시적인 사용자 승인 없이 기존 기능 계획을 덮어쓰지 마세요.

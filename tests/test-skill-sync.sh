@@ -48,19 +48,15 @@ assert_contains() {
   grep -Fq -- "$expected" "$file" || fail "missing expected text in $file: $expected"
 }
 
-assert_before() {
-  local file=$1 first=$2 second=$3 first_line second_line
-  first_line=$(grep -nF -- "$first" "$file" | head -n 1 | cut -d: -f1)
-  second_line=$(grep -nF -- "$second" "$file" | head -n 1 | cut -d: -f1)
-  [[ -n $first_line && -n $second_line && $first_line -lt $second_line ]] ||
-    fail "expected text order in $file: $first before $second"
-}
-
 assert_absent() {
   local root=$1 unexpected=$2
   if grep -RFq -- "$unexpected" "$root"; then
     fail "unexpected legacy text under $root: $unexpected"
   fi
+}
+
+assert_path_absent() {
+  [[ ! -e "$1" && ! -L "$1" ]] || fail "unexpected legacy path: $1"
 }
 
 # Planning infers a clear feature type and only asks between the two supported types when unclear.
@@ -75,25 +71,29 @@ assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
 assert_absent "$repo_root/skills-ko/plan-feature" '`other`'
 assert_absent "$repo_root/skills/plan-feature" '`other`'
 
-# Planning and execution agree on the five-minute default in both authoring languages.
+# Planning and execution agree on the one-minute automatic smoke policy.
 assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
-  '기본값이 300초인 smoke 기준 시간'
+  '기본값이 60초인 자동 smoke 기준 시간'
 assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
-  'smoke_threshold_seconds: 300'
+  'smoke_threshold_seconds: 60'
 assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
-  '계획의 threshold, 기본 300초를 사용하세요.'
+  '계획의 threshold, 기본 60초를 사용하세요.'
 assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
-  'smoke threshold, defaulting to 300 seconds;'
+  'automatic smoke threshold, defaulting to 60 seconds;'
 assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
-  'smoke_threshold_seconds: 300'
+  'smoke_threshold_seconds: 60'
 assert_contains "$repo_root/skills/run-feature/SKILL.md" \
-  'plan threshold, default 300 seconds:'
-assert_absent "$repo_root/skills" 'smoke_threshold_seconds: 60'
-assert_absent "$repo_root/skills" 'default 60 seconds'
-assert_absent "$repo_root/skills" 'defaulting to 60 seconds'
-assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 60'
-assert_absent "$repo_root/skills-ko" '기본값이 60초'
-assert_absent "$repo_root/skills-ko" '기본 60초'
+  'plan threshold, default 60 seconds.'
+assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
+  '별도의 eval별 smoke 선택을 묻거나 기록하지 마세요.'
+assert_contains "$repo_root/skills/run-feature/SKILL.md" \
+  'Ignore legacy per-eval smoke-selection fields'
+assert_absent "$repo_root/skills" 'smoke_threshold_seconds: 300'
+assert_absent "$repo_root/skills" 'default 300 seconds'
+assert_absent "$repo_root/skills" 'defaulting to 300 seconds'
+assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 300'
+assert_absent "$repo_root/skills-ko" '기본값이 300초'
+assert_absent "$repo_root/skills-ko" '기본 300초'
 
 # Independent review uses a complete embedded contract without an optional skill dependency.
 assert_absent "$repo_root/skills-ko/run-feature" '$review-agent'
@@ -107,50 +107,37 @@ assert_contains "$repo_root/skills/run-feature/SKILL.md" \
 assert_contains "$repo_root/skills/run-feature/SKILL.md" \
   'the reviewed change introduced it;'
 
-# Plan-and-run handoff is marked, narrowly delegated, and implicitly discoverable only in its
-# orchestration skill.
-assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
-  'execution_handoff: plan-run-feature'
-assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
-  'execution_handoff: plan-run-feature'
+# Plan handoff saves only; running remains an explicit and separate action.
+assert_path_absent "$repo_root/skills-ko/plan-run-feature"
+assert_path_absent "$repo_root/skills/plan-run-feature"
 assert_contains "$repo_root/skills-ko/plan-feature/SKILL.md" \
-  '`$plan-run-feature`가 위임한 호출에서는'
+  'skill: save-approved-plan'
 assert_contains "$repo_root/skills/plan-feature/SKILL.md" \
-  'For an invocation delegated by `$plan-run-feature`'
+  'continuation: save-only'
 assert_contains "$repo_root/skills-ko/save-approved-plan/SKILL.md" \
-  '승인된 `$plan-run-feature` 위임에서는 resolved ID를 orchestrator에 반환'
+  '명시 호출과 handoff 호출 모두 저장 전용입니다.'
 assert_contains "$repo_root/skills/save-approved-plan/SKILL.md" \
-  'For an approved `$plan-run-feature` delegation, return the resolved ID'
+  'Do not invoke `$run-feature` or start branch creation'
 assert_contains "$repo_root/skills-ko/run-feature/SKILL.md" \
-  '승인된 `$plan-run-feature` 위임은 같은 handoff에서'
+  '`$run-feature [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요.'
 assert_contains "$repo_root/skills/run-feature/SKILL.md" \
-  'Allow an approved `$plan-run-feature` delegation only with'
-assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
-  'metadata를 만들거나 바꾸기 전에 `../save-approved-plan/SKILL.md`와 `../run-feature/SKILL.md`를 각각 완전히 읽고'
-assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
-  'before creating or changing metadata, read both `../save-approved-plan/SKILL.md` and `../run-feature/SKILL.md` completely'
-assert_before "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
-  'metadata를 만들거나 바꾸기 전에' '## 저장 또는 재사용'
-assert_before "$repo_root/skills/plan-run-feature/SKILL.md" \
-  'before creating or changing metadata' '## Save or reuse'
-assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
-  'goal objective의 저장 계획 경로처럼 feature ID를 나타내는 모든 필드와 경로'
-assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
-  'every field and path that denotes the feature ID, including a saved-plan path in a goal objective'
-assert_contains "$repo_root/skills-ko/plan-run-feature/SKILL.md" \
-  '재사용한 state가 `integrated`여도 직접 완료라고 보고하지 말고'
-assert_contains "$repo_root/skills/plan-run-feature/SKILL.md" \
-  'Even when reused state says `integrated`, do not report completion directly.'
+  'Run only after an explicit `$run-feature [<feature-id>]` invocation.'
 assert_contains "$repo_root/skills-ko/save-approved-plan/SKILL.md" \
   'goal objective의 저장 계획 경로를 포함해 feature ID를 나타내는 모든 필드와 경로'
 assert_contains "$repo_root/skills/save-approved-plan/SKILL.md" \
   'every feature-ID-bearing field and path, including'
-assert_contains "$repo_root/skills/plan-run-feature/agents/openai.yaml" \
+assert_contains "$repo_root/skills/save-approved-plan/agents/openai.yaml" \
   'allow_implicit_invocation: true'
-for skill in plan-feature save-approved-plan run-feature; do
+for skill in plan-feature run-feature; do
   assert_contains "$repo_root/skills/$skill/agents/openai.yaml" \
     'allow_implicit_invocation: false'
 done
+assert_absent "$repo_root/skills-ko/plan-feature" '$plan-run-feature'
+assert_absent "$repo_root/skills/plan-feature" '$plan-run-feature'
+assert_absent "$repo_root/skills-ko/save-approved-plan" '$plan-run-feature'
+assert_absent "$repo_root/skills/save-approved-plan" '$plan-run-feature'
+assert_absent "$repo_root/skills-ko/run-feature" '$plan-run-feature'
+assert_absent "$repo_root/skills/run-feature" '$plan-run-feature'
 
 # A valid repository can record and verify a complete synchronization state.
 make_case valid

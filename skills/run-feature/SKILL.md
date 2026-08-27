@@ -1,6 +1,6 @@
 ---
 name: run-feature
-description: Prepare, implement, evaluate, independently review, and integrate a saved standard or goal-loop feature, or diagnose and resume an interrupted feature. Use only when the user explicitly invokes "$run-feature", optionally with a feature ID, or when an approved `$plan-run-feature` continuation delegates a successfully saved or reused feature ID.
+description: Prepare, implement, evaluate, independently review, and integrate a saved standard or goal-loop feature, or diagnose and resume an interrupted feature. Use only when the user explicitly invokes "$run-feature", optionally with a feature ID.
 ---
 
 # Run Feature
@@ -14,11 +14,8 @@ machine-readable schema keys exactly.
 
 ## Resolve the feature
 
-Accept `$run-feature [<feature-id>]`. Allow an approved `$plan-run-feature` delegation only with
-the resolved ID successfully saved or reused as the same plan in that handoff, and give that ID
-highest priority. Do not change any other safety or recovery rule.
-
-Otherwise, resolve in this order:
+Run only after an explicit `$run-feature [<feature-id>]` invocation. Resolve the feature ID in this
+order:
 
 1. explicit ID;
 2. the most recently planned, saved, or run feature in the conversation;
@@ -208,13 +205,12 @@ Whenever main changed after authoritative eval:
 Set `integration-ready`, `validated_feature_head`, and `validated_main_sha` only for the clean,
 fully evaluated and accepted HEAD.
 
-## Select post-merge smoke
+## Build automatic post-merge smoke
 
-Use the latest successful eval durations and the plan threshold, default 300 seconds:
-
-- `always`: include regardless of duration;
-- `never`: exclude;
-- `auto`: include only within the threshold.
+Use the latest successful eval durations and the plan threshold, default 60 seconds. Treat every
+eval as an automatic candidate and include only commands whose duration is within the threshold.
+Ignore legacy per-eval smoke-selection fields in plans or results, and do not ask for a separate
+selection.
 
 Require at least one command. Smoke must be local, repeatable, and free of deployment or
 irreversible external side effects.

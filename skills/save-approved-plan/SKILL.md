@@ -1,11 +1,11 @@
 ---
 name: save-approved-plan
-description: Persist the latest finalized standard or goal-loop feature plan into shared Git metadata without preparing or implementing it. Use only when the user explicitly invokes "$save-approved-plan" after planning, or when an approved `$plan-run-feature` Default continuation delegates persistence.
+description: Persist the latest finalized standard or goal-loop feature plan into shared Git metadata without preparing or implementing it. Use only when the user explicitly invokes "$save-approved-plan" or an approved same-conversation `$plan-feature` save-only handoff delegates persistence.
 ---
 
 # Save Approved Plan
 
-Save one finalized feature plan only. Never treat saving itself as implementation approval. Only a separate implementation request in an approved `$plan-run-feature` continuation also authorizes the later run.
+Save one finalized feature plan only. Both explicit and handed-off invocations are save-only. Never treat saving as implementation approval or invoke `$run-feature` directly.
 
 Use the user's current conversation language for questions, status, and prose artifacts unless the
 user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and
@@ -16,10 +16,22 @@ machine-readable schema keys exactly.
 If Plan mode is active, ask the user to switch to Default mode and invoke `$save-approved-plan`
 again. Do not write files.
 
-For an ordinary invocation, require the user to invoke `$save-approved-plan` explicitly. Allow a
-delegated invocation only when the latest finalized plan from an explicit same-conversation
-`$plan-run-feature` flow contains `execution_handoff: plan-run-feature` and the user requested its
-implementation in Default mode. Otherwise, do not write files.
+Allow the invocation only when either condition is true:
+
+1. The user explicitly invoked `$save-approved-plan`.
+2. The latest finalized same-conversation `$plan-feature` plan contains the handoff below, and the
+   user selected the host's "Implement this plan" action before the host entered Default mode.
+
+   ```yaml
+   execution_handoff:
+     skill: save-approved-plan
+     authorization: explicit-user-selection
+     automatic_trigger: implement-this-plan
+     continuation: save-only
+   ```
+
+Do not infer user selection from the marker alone. A handoff does not survive a new conversation;
+require explicit invocation there. Otherwise, do not write files.
 
 Use the latest finalized `$plan-feature` plan in the conversation. Require:
 
@@ -27,7 +39,7 @@ Use the latest finalized `$plan-feature` plan in the conversation. Require:
 - `feature_type` equal to `standard` or `goal-loop`;
 - scope, acceptance criteria, and implementation approach;
 - executable eval commands with success conditions;
-- per-eval post-merge selection and at least one eligible smoke;
+- an automatic smoke contract for every eval and at least one eval expected within the threshold;
 - an approved smoke threshold;
 - a complete `Goal Contract` for `goal-loop`.
 
@@ -92,8 +104,8 @@ Ask the user to return to Plan mode and invoke `$plan-feature`.
 
 7. Use a temporary file in the destination directory followed by atomic rename for state writes.
 8. Do not create a branch or worktree, implement, test, commit, or push.
-9. For an ordinary invocation, report the saved ID and path, then show `$run-feature <id>` as the
-   next explicit command. For an approved `$plan-run-feature` delegation, return the resolved ID
-   to the orchestrator and allow the later run without another confirmation.
+9. For every invocation, report the saved ID and path, then show `$run-feature <id>` as the next
+   manual command. Do not invoke `$run-feature` or start branch creation, worktree preparation,
+   implementation, evaluation, or integration.
 
 Never overwrite an existing feature plan without explicit user approval.

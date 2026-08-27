@@ -1,6 +1,6 @@
 ---
 name: run-feature
-description: 저장된 표준 또는 목표 루프 기능을 준비, 구현, 평가, 독립 리뷰, 통합하거나 중단된 기능을 진단하고 재개합니다. 사용자가 기능 ID를 선택적으로 포함해 "$run-feature"를 명시적으로 호출하거나 승인된 `$plan-run-feature` continuation이 성공적으로 저장 또는 재사용한 feature ID의 실행을 위임한 경우에만 사용합니다.
+description: 저장된 표준 또는 목표 루프 기능을 준비, 구현, 평가, 독립 리뷰, 통합하거나 중단된 기능을 진단하고 재개합니다. 사용자가 기능 ID를 선택적으로 포함해 "$run-feature"를 명시적으로 호출한 경우에만 사용합니다.
 ---
 
 # 기능 실행
@@ -11,9 +11,7 @@ description: 저장된 표준 또는 목표 루프 기능을 준비, 구현, 평
 
 ## 기능 확인
 
-`$run-feature [<feature-id>]`를 허용하세요. 승인된 `$plan-run-feature` 위임은 같은 handoff에서 성공적으로 저장하거나 동일 계획으로 재사용한 resolved ID가 있을 때만 허용하고 그 ID를 최우선으로 사용하세요. 다른 안전 또는 복구 규칙은 변경하지 마세요.
-
-그 외에는 다음 순서로 기능을 찾으세요.
+`$run-feature [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요. 기능 ID는 다음 순서로 찾으세요.
 
 1. 명시적인 ID
 2. 대화에서 가장 최근에 계획, 저장, 실행한 기능
@@ -160,13 +158,11 @@ authoritative eval 이후 main이 변경됐으면 다음을 수행하세요.
 
 깨끗하고 전체 평가와 승인을 받은 HEAD에만 `integration-ready`, `validated_feature_head`, `validated_main_sha`를 설정하세요.
 
-## 병합 후 smoke 선택
+## 자동 병합 후 smoke 구성
 
-최신 성공 eval duration과 계획의 threshold, 기본 300초를 사용하세요.
-
-- `always`: duration과 관계없이 포함
-- `never`: 제외
-- `auto`: threshold 이내일 때만 포함
+최신 성공 eval duration과 계획의 threshold, 기본 60초를 사용하세요. 모든 eval을 자동
+후보로 취급하고 duration이 threshold 이내인 명령만 포함하세요. 기존 계획이나 결과의
+eval별 smoke 선택 필드는 무시하고 별도의 선택을 요청하지 마세요.
 
 적어도 한 명령을 요구하세요. Smoke는 local에서 반복 가능해야 하며 deployment 또는 되돌릴 수 없는 외부 side effect가 없어야 합니다.
 

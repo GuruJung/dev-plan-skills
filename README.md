@@ -2,9 +2,10 @@
 
 사용자와 함께 계획을 확정한 뒤 구현·평가·독립 리뷰·통합을 수행하는 Codex 스킬
 모음이다. `skills-ko/`의 `SKILL.md`가 편집 기준인 한글 원본이고, `skills/`는 전역으로
-설치되는 영문 대응본이다. `$plan-feature`, `$save-approved-plan`, `$run-feature`는
-명시적으로 호출한다. `$plan-run-feature`도 Plan 모드에서 명시적으로 시작하지만 marker가
-있는 확정 계획의 구현 continuation에서는 계획 저장과 실행을 자동으로 연결할 수 있다.
+설치되는 영문 대응본이다. `$plan-feature`와 `$run-feature`는 명시적으로 호출한다.
+`$save-approved-plan`은 명시적으로 호출하거나, 확정 계획에서 "Implement this plan"을
+선택한 같은 대화의 save-only handoff로 활성화한다. 저장 후 구현은 시작하지 않으며
+`$run-feature <id>`를 사용자가 별도로 호출한다.
 
 ## 스킬 작성 언어와 동기화
 
@@ -35,11 +36,14 @@ scripts/install-global-skills.sh
 scripts/install-global-skills.sh --check
 ```
 
-설치 스크립트는 `skills/` 아래의 네 스킬을 `~/.agents/skills/`에 독립된 디렉터리로
-복사한다. 설치본 하나라도 원본과 다르면 네 스킬을 함께 staging하고 검증한 뒤 기존
-설치본 전체를 백업하고 교체한다. 중간에 실패하면 네 스킬을 모두 설치 전 상태로
+설치 스크립트는 `skills/` 아래의 세 스킬을 `~/.agents/skills/`에 독립된 디렉터리로
+복사한다. 설치본 하나라도 원본과 다르면 세 스킬을 함께 staging하고 검증한 뒤 기존
+설치본 전체를 백업하고 교체한다. 중간에 실패하면 관리 대상 전체를 설치 전 상태로
 되돌린다. 설치와 제거는 같은 배타 잠금을 사용하므로 동시에 실행해도 순서대로 처리된다.
 저장소를 수정하거나 이동한 뒤에는 설치 스크립트를 다시 실행해야 한다.
+
+이전 버전의 독립 디렉터리형 `plan-run-feature` 설치본은 다음 설치 또는 제거 때 retired
+대상으로 백업한 뒤 제거한다. 실패 시에는 활성 세 스킬과 함께 원래 상태로 복원한다.
 
 이 저장소를 가리키는 이전 방식의 심볼릭 링크는 최초 설치 때 실제 콘텐츠가 백업되고
 일반 디렉터리 설치본으로 전환된다. 다른 링크나 일반 파일은 덮어쓰지 않는다.
@@ -55,10 +59,10 @@ scripts/install-global-skills.sh --check
 scripts/uninstall-global-skills.sh
 ```
 
-제거 스크립트는 현재 설치본을 백업한 뒤 네 스킬을 함께 제거한다. 이미 설치되어 있지
+제거 스크립트는 현재 설치본을 백업한 뒤 세 스킬과 남아 있는 retired 설치본을 함께 제거한다. 이미 설치되어 있지
 않으면 변경 없이 성공한다.
 
-백업을 수동으로 복원하려면 먼저 아래 네 대상이 모두 없는지 확인한다.
+백업을 수동으로 복원하려면 먼저 아래 대상이 모두 없는지 확인한다.
 
 ```bash
 test ! -e "$HOME/.agents/skills/plan-feature"
@@ -71,7 +75,7 @@ test ! -e "$HOME/.agents/skills/run-feature"
 확인한다.
 
 ```bash
-for skill in plan-feature plan-run-feature save-approved-plan run-feature; do
+for skill in plan-feature save-approved-plan run-feature; do
   if test -d "$HOME/.agents/skill-backups/feature-workflow/<backup-set>/$skill"; then
     cp -a "$HOME/.agents/skill-backups/feature-workflow/<backup-set>/$skill" \
       "$HOME/.agents/skills/$skill"
@@ -93,7 +97,7 @@ Codex가 복원된 스킬을 자동으로 인식하지 못하면 세션을 새�
 2. 스킬 이름과 이 저장소의 Git 커밋, 호출 명령, 기대·실제 동작, 최소 재현 절차,
    관련 출력과 diff, 작업 차단 여부를 포함한 개선 보고서를 만든다.
 3. 이 저장소에서 새 Codex 세션을 열고 보고서를 전달한다.
-4. 행동 변경은 `$plan-feature`, `$plan-run-feature`, `$save-approved-plan`, `$run-feature`로 계획·구현한다.
+4. 행동 변경은 `$plan-feature`, `$save-approved-plan`, `$run-feature`로 계획·구현한다.
 5. feature worktree의 후보 스킬을 최소 재현과 독립된 새 세션으로 검증한다. 전역
    설치본은 후보를 시험하기 위해 변경하지 않는다.
 6. 검증된 변경만 `main`에 통합하고 소비 프로젝트에서 실패 단계를 다시 실행한다.

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-skill_names=(plan-feature plan-run-feature save-approved-plan run-feature)
+skill_names=(plan-feature save-approved-plan run-feature)
+retired_skill_names=(plan-run-feature)
+managed_skill_names=("${skill_names[@]}" "${retired_skill_names[@]}")
 
 fail() {
   printf 'error: %s\n' "$*" >&2
@@ -85,7 +87,7 @@ create_backup_set() {
   done
   mkdir -- "$temporary_path"
 
-  for skill in "${skill_names[@]}"; do
+  for skill in "${managed_skill_names[@]}"; do
     target=$target_root/$skill
     if path_exists "$target"; then
       copy_directory_contents "$target" "$temporary_path/$skill"
@@ -101,7 +103,7 @@ create_backup_set() {
     printf 'schema_version=1\n'
     printf 'kind=%s\n' "$kind"
     printf 'created_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf 'skills=%s\n' "${skill_names[*]}"
+    printf 'skills=%s\n' "${managed_skill_names[*]}"
   } >"$temporary_path/.feature-workflow-backup"
 
   mv -- "$temporary_path" "$final_path"
@@ -176,7 +178,7 @@ validate_sources() {
     source=$source_root/$skill
     metadata=$source/agents/openai.yaml
     expected_implicit=false
-    if [[ "$skill" == plan-run-feature ]]; then
+    if [[ "$skill" == save-approved-plan ]]; then
       expected_implicit=true
     fi
 

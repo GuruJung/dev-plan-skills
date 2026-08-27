@@ -41,7 +41,8 @@ repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
 install_script=$repo_root/scripts/install-global-skills.sh
 uninstall_script=$repo_root/scripts/uninstall-global-skills.sh
 source_root=$repo_root/skills
-skill_names=(plan-feature plan-run-feature save-approved-plan run-feature)
+skill_names=(plan-feature save-approved-plan run-feature)
+retired_skill=plan-run-feature
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/feature workflow skills tests.XXXXXX")
 
 cleanup() {
@@ -75,6 +76,7 @@ assert_current_install() {
     diff -qr -- "$source_root/$skill" "$root/skills/$skill" >/dev/null ||
       fail "installed copy differs from source: $skill"
   done
+  assert_absent "$root/skills/$retired_skill"
   assert_absent "$root/skills/skills-ko"
 }
 
@@ -110,6 +112,23 @@ grep -Fq 'local installed change' "$first_backup/plan-feature/SKILL.md" ||
 for skill in "${skill_names[@]}"; do
   assert_directory "$first_backup/$skill"
 done
+
+# A retired plan-run-feature installation is backed up and removed atomically.
+retirement_root=$test_root/'retirement root'
+run_install "$retirement_root"
+cp -a -- "$source_root/plan-feature" "$retirement_root/skills/$retired_skill"
+printf 'retired installation sentinel\n' \
+  >>"$retirement_root/skills/$retired_skill/SKILL.md"
+if run_install "$retirement_root" --check >/dev/null 2>&1; then
+  fail '--check accepted a retired skill installation'
+fi
+run_install "$retirement_root"
+assert_current_install "$retirement_root"
+retirement_backup=$(newest_backup "$retirement_root/backups")
+assert_directory "$retirement_backup/$retired_skill"
+grep -Fq 'retired installation sentinel' \
+  "$retirement_backup/$retired_skill/SKILL.md" ||
+  fail 'retirement backup did not preserve the removed skill'
 
 # Managed legacy links become independent copies and their dereferenced contents are backed up.
 migration_root=$test_root/'migration root'
@@ -185,6 +204,7 @@ cmp -s -- "$lock_snapshot" "$lock_victim" ||
 # A failed promotion restores every previous target, including local installed changes.
 rollback_root=$test_root/'rollback root'
 run_install "$rollback_root"
+cp -a -- "$source_root/plan-feature" "$rollback_root/skills/$retired_skill"
 printf 'must survive rollback\n' >>"$rollback_root/skills/plan-feature/SKILL.md"
 fake_bin=$test_root/'fake bin'
 mkdir -p -- "$fake_bin"
@@ -202,12 +222,15 @@ fi
 for skill in "${skill_names[@]}"; do
   assert_directory "$rollback_root/skills/$skill"
 done
+assert_directory "$rollback_root/skills/$retired_skill"
 grep -Fq 'must survive rollback' "$rollback_root/skills/plan-feature/SKILL.md" ||
   fail 'failed promotion did not restore the previous workflow'
 
 # A failed uninstall move also restores the complete workflow.
 uninstall_rollback_root=$test_root/'uninstall rollback root'
 run_install "$uninstall_rollback_root"
+cp -a -- "$source_root/plan-feature" \
+  "$uninstall_rollback_root/skills/$retired_skill"
 printf 'must survive uninstall rollback\n' \
   >>"$uninstall_rollback_root/skills/plan-feature/SKILL.md"
 if FEATURE_WORKFLOW_TARGET_ROOT="$uninstall_rollback_root/skills" \
@@ -221,6 +244,7 @@ fi
 for skill in "${skill_names[@]}"; do
   assert_directory "$uninstall_rollback_root/skills/$skill"
 done
+assert_directory "$uninstall_rollback_root/skills/$retired_skill"
 grep -Fq 'must survive uninstall rollback' \
   "$uninstall_rollback_root/skills/plan-feature/SKILL.md" ||
   fail 'failed uninstall did not restore the previous workflow'
@@ -261,15 +285,18 @@ grep -Fq 'unrelated matching-name directory' \
   fail 'retention deleted an unrelated matching-name directory'
 
 # Uninstall backs up the whole workflow, is idempotent, and supports manual restoration.
+cp -a -- "$source_root/plan-feature" "$retention_root/skills/$retired_skill"
 run_uninstall "$retention_root"
 for skill in "${skill_names[@]}"; do
   assert_absent "$retention_root/skills/$skill"
 done
+assert_absent "$retention_root/skills/$retired_skill"
 [[ $(count_backups "$retention_root/backups") == 5 ]] ||
   fail 'uninstall did not preserve the five-backup limit'
 uninstall_backup=$(find "$retention_root/backups" -mindepth 1 -maxdepth 1 -type d \
   -name '????????T??????Z-??????-uninstall' -print | sort | tail -n 1)
 [[ -n "$uninstall_backup" ]] || fail 'uninstall backup is missing'
+assert_directory "$uninstall_backup/$retired_skill"
 for skill in "${skill_names[@]}"; do
   cp -a -- "$uninstall_backup/$skill" "$retention_root/skills/$skill"
   diff -qr -- "$uninstall_backup/$skill" "$retention_root/skills/$skill" >/dev/null ||

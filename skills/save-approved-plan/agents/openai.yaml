@@ -4,4 +4,4 @@ interface:
   default_prompt: "Use $save-approved-plan to persist the latest finalized feature plan without implementing it."
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

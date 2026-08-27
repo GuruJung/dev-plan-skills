@@ -1,6 +1,6 @@
 ---
 name: plan-feature
-description: Interview the user and produce a decision-complete implementation plan for a standard or native-goal-loop software feature. Use only when the user explicitly invokes "$plan-feature" before saving or implementation, or when `$plan-run-feature` delegates its approved Plan phase.
+description: Interview the user and produce a decision-complete standard or native-goal-loop feature plan with a save-only implementation handoff. Use only when the user explicitly invokes "$plan-feature" in Plan mode.
 ---
 
 # Plan Feature
@@ -14,7 +14,7 @@ machine-readable schema keys exactly.
 ## Require Plan mode
 
 If Plan mode is not active, ask the user to switch to Plan mode and invoke `$plan-feature` again.
-Delegation from `$plan-run-feature` also requires Plan mode. Stop without changing repository state.
+Stop without changing repository state.
 
 ## Ground the interview
 
@@ -47,11 +47,12 @@ Keep asking material questions until the plan fixes:
 - failure modes and recovery expectations;
 - executable eval commands and their success conditions;
 - independent-review acceptance;
-- post-merge smoke selection for every eval: `auto`, `always`, or `never`;
-- smoke threshold, defaulting to 300 seconds;
+- automatic smoke threshold, defaulting to 60 seconds;
 - rollout, migration, or monitoring only when the feature needs them.
 
-Require at least one post-merge smoke command.
+Treat every eval as an automatic smoke candidate. Do not ask for or record a per-eval smoke
+selection. Require at least one eval that is verified or reasonably expected to run within the
+threshold.
 
 ## Interview a goal-loop feature
 
@@ -69,7 +70,7 @@ Fix the complete experiment contract:
 - best-so-far comparison and checkpoint rule;
 - tie-breaker when primary metrics are equal;
 - conditions for reporting, pausing, or re-planning;
-- full final eval and post-merge smoke contract.
+- full final eval and automatic post-merge smoke contract.
 
 Inspect likely eval cost, then recommend concrete budget options. Do not choose a default when the
 user is silent. Require explicit approval of at least one numeric budget. Include a native token
@@ -105,7 +106,12 @@ feature_id: <id>
 title: <title>
 feature_type: <standard-or-goal-loop>
 base_branch: main
-smoke_threshold_seconds: 300
+smoke_threshold_seconds: 60
+execution_handoff:
+  skill: save-approved-plan
+  authorization: explicit-user-selection
+  automatic_trigger: implement-this-plan
+  continuation: save-only
 ---
 ```
 
@@ -114,11 +120,9 @@ including the native objective and budgets.
 
 Produce the decision-complete plan in the required Plan-mode format.
 
-For an ordinary `$plan-feature` invocation, end with a localized blockquote telling the user to
-switch to Default mode and explicitly invoke `$save-approved-plan` to save the plan.
-
-For an invocation delegated by `$plan-run-feature`, add `execution_handoff: plan-run-feature` to
-the frontmatter. End with a localized blockquote explaining that choosing "Implement this plan"
-continues with plan persistence and execution in Default mode, with an explicit
-`$plan-run-feature` invocation in Default mode as the fallback when automatic continuation does
-not start.
+End with a localized blockquote explaining that the host's "Implement this plan" action switches
+to Default mode and delegates only plan persistence to `$save-approved-plan`. This selection does
+not authorize implementation, branch or worktree creation, or `$run-feature`. When the automatic
+handoff does not start or the host has no native implementation action, tell the user to switch to
+Default mode and invoke `$save-approved-plan` explicitly. Save nothing when the user keeps
+planning.

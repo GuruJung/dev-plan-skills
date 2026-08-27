@@ -7,7 +7,7 @@ Usage:
   install-global-skills.sh
   install-global-skills.sh --check
 
-Install or verify independent copies of this repository's four skills under
+Install or verify independent copies of this repository's three skills under
 ~/.agents/skills. Updates back up and replace the complete workflow atomically.
 EOF
 }
@@ -68,6 +68,17 @@ for skill in "${skill_names[@]}"; do
   fi
 done
 
+for skill in "${retired_skill_names[@]}"; do
+  target=$target_root/$skill
+  if [[ -L "$target" ]]; then
+    fail "refusing to retire symbolic-link target: $target"
+  elif [[ -e "$target" ]]; then
+    [[ -d "$target" ]] || fail "retired target exists and is not a directory: $target"
+    has_existing=true
+    all_current=false
+  fi
+done
+
 if [[ "$mode" == check ]]; then
   [[ "$all_current" == true ]] || fail 'global skill copies are missing, stale, or symbolic links'
   printf 'ok: all global skill copies are current\n'
@@ -93,7 +104,7 @@ recover_installation() {
   local recovery_failed=false
 
   mkdir -p -- "$failed_root"
-  for skill in "${skill_names[@]}"; do
+  for skill in "${managed_skill_names[@]}"; do
     target=$target_root/$skill
     if path_exists "$rollback_dir/$skill"; then
       if path_exists "$target" && ! mv -- "$target" "$failed_root/$skill"; then
@@ -159,7 +170,7 @@ if [[ "$has_existing" == true ]]; then
 fi
 
 promotion_failed=false
-for skill in "${skill_names[@]}"; do
+for skill in "${managed_skill_names[@]}"; do
   target=$target_root/$skill
   if path_exists "$target"; then
     if ! mv -- "$target" "$rollback_dir/$skill"; then
