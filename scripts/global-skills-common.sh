@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-skill_names=(plan-feature save-approved-plan run-feature)
-retired_skill_names=(plan-run-feature)
+skill_names=(create-dev-plan save-dev-plan implement-dev-plan)
+retired_skill_names=(plan-feature save-approved-plan run-feature plan-run-feature)
 managed_skill_names=("${skill_names[@]}" "${retired_skill_names[@]}")
 
 fail() {
@@ -196,7 +196,7 @@ validate_sources() {
     source=$source_root/$skill
     metadata=$source/agents/openai.yaml
     expected_implicit=false
-    if [[ "$skill" == save-approved-plan ]]; then
+    if [[ "$skill" == save-dev-plan ]]; then
       expected_implicit=true
     fi
 
@@ -208,7 +208,7 @@ validate_sources() {
       "$metadata" || fail "unexpected implicit invocation policy: $metadata"
   done
 
-  [[ -x "$source_root/run-feature/scripts/integrate-feature.sh" ]] ||
+  [[ -x "$source_root/implement-dev-plan/scripts/integrate-feature.sh" ]] ||
     fail 'integration helper is not executable'
 }
 

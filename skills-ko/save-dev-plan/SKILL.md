@@ -1,27 +1,27 @@
 ---
-name: save-approved-plan
-description: 확정된 최신 표준 또는 목표 루프 기능 계획을 준비나 구현 없이 공유 Git 메타데이터에 저장합니다. 사용자가 "$save-approved-plan"을 명시적으로 호출하거나 같은 대화의 승인된 `$plan-feature` save-only handoff가 저장을 위임한 경우에만 사용합니다.
+name: save-dev-plan
+description: 확정된 최신 표준 또는 목표 루프 개발 계획을 준비나 구현 없이 공유 Git 메타데이터에 저장합니다. 사용자가 "$save-dev-plan"을 명시적으로 호출하거나 같은 대화의 승인된 `$create-dev-plan` save-only handoff가 저장을 위임한 경우에만 사용합니다.
 ---
 
-# 승인된 계획 저장
+# 개발 계획 저장
 
-확정된 기능 계획 하나만 저장하세요. 명시 호출과 handoff 호출 모두 저장 전용입니다. 저장을 구현 승인으로 취급하거나 `$run-feature`를 직접 호출하지 마세요.
+확정된 개발 계획 하나만 저장하세요. 명시 호출과 handoff 호출 모두 저장 전용입니다. 저장을 구현 승인으로 취급하거나 `$implement-dev-plan`을 직접 호출하지 마세요.
 
 사용자가 다른 언어를 명시적으로 요청하지 않는 한 질문, 상태 안내, 서술형 산출물에는 사용자의 현재 대화 언어를 사용하세요. 명령, 식별자, 경로, enum 값, 기계 판독용 스키마 키는 원형을 정확히 유지하세요.
 
 ## 인계 확인
 
-Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전환하고 `$save-approved-plan`을 다시 호출하도록 요청하세요. 파일을 쓰지 마세요.
+Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전환하고 `$save-dev-plan`을 다시 호출하도록 요청하세요. 파일을 쓰지 마세요.
 
 다음 중 하나일 때만 호출을 허용하세요.
 
-1. 사용자가 `$save-approved-plan`을 명시적으로 호출했습니다.
-2. 같은 대화의 최신 확정 `$plan-feature` 계획에 아래 handoff가 있고, 사용자가 host의
+1. 사용자가 `$save-dev-plan`을 명시적으로 호출했습니다.
+2. 같은 대화의 최신 확정 `$create-dev-plan` 계획에 아래 handoff가 있고, 사용자가 host의
    "Implement this plan" 동작을 선택한 뒤 Default 모드로 전환됐습니다.
 
    ```yaml
    execution_handoff:
-     skill: save-approved-plan
+     skill: save-dev-plan
      authorization: explicit-user-selection
      automatic_trigger: implement-this-plan
      continuation: save-only
@@ -30,7 +30,7 @@ Plan 모드가 활성화되어 있으면 사용자에게 Default 모드로 전�
 handoff marker만으로 사용자 선택을 추정하지 마세요. handoff는 새 대화로 이어지지 않으며,
 그 경우 명시 호출을 요구하세요. 조건이 부족하면 파일을 쓰지 마세요.
 
-대화에서 가장 최근에 확정된 `$plan-feature` 계획을 사용하세요. 다음을 요구하세요.
+대화에서 가장 최근에 확정된 `$create-dev-plan` 계획을 사용하세요. 다음을 요구하세요.
 
 - 고유한 `feature_id`
 - `standard` 또는 `goal-loop`인 `feature_type`
@@ -40,7 +40,7 @@ handoff marker만으로 사용자 선택을 추정하지 마세요. handoff는 �
 - 승인된 smoke 기준 시간
 - `goal-loop`인 경우 완전한 `Goal Contract`
 
-계획이 없거나, 불완전하거나, 지원되는 기능 유형 밖이면 내용을 만들어내지 마세요. 사용자에게 Plan 모드로 돌아가 `$plan-feature`를 호출하도록 요청하세요.
+계획이 없거나, 불완전하거나, 지원되는 기능 유형 밖이면 내용을 만들어내지 마세요. 사용자에게 Plan 모드로 돌아가 `$create-dev-plan`을 호출하도록 요청하세요.
 
 ## 기능 저장
 
@@ -97,7 +97,7 @@ handoff marker만으로 사용자 선택을 추정하지 마세요. handoff는 �
 7. 상태 파일을 쓸 때 destination 디렉터리의 임시 파일을 사용한 뒤 atomic rename하세요.
 8. branch나 worktree를 만들거나, 구현, 테스트, commit, push하지 마세요.
 9. 호출 방식과 관계없이 저장된 ID와 경로를 보고한 뒤 다음 수동 명령으로
-   `$run-feature <id>`를 보여 주세요. `$run-feature`를 호출하거나 branch, worktree, 구현,
+   `$implement-dev-plan <id>`를 보여 주세요. `$implement-dev-plan`을 호출하거나 branch, worktree, 구현,
    평가 또는 통합을 시작하지 마세요.
 
 명시적인 사용자 승인 없이 기존 기능 계획을 덮어쓰지 마세요.

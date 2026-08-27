@@ -1,0 +1,7 @@
+interface:
+  display_name: "Implement Dev Plan"
+  short_description: "Implement, review, and integrate a development plan"
+  default_prompt: "Use $implement-dev-plan to implement the selected saved development plan."
+
+policy:
+  allow_implicit_invocation: false

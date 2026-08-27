@@ -1,7 +1,0 @@
-interface:
-  display_name: "Plan Feature"
-  short_description: "Interview and plan a standard or goal-loop feature"
-  default_prompt: "Use $plan-feature to interview me and produce a decision-complete feature plan."
-
-policy:
-  allow_implicit_invocation: false

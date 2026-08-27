@@ -1,9 +1,9 @@
 ---
-name: plan-feature
-description: 표준 기능 또는 네이티브 목표 루프 기능을 계획하기 위해 사용자를 인터뷰하고, 저장 전용 구현 handoff를 포함한 의사결정 완료 계획을 작성합니다. 사용자가 Plan 모드에서 "$plan-feature"를 명시적으로 호출한 경우에만 사용합니다.
+name: create-dev-plan
+description: 표준 또는 네이티브 목표 루프 개발 계획을 만들기 위해 사용자를 인터뷰하고, 저장 전용 구현 handoff를 포함한 의사결정 완료 계획을 작성합니다. 사용자가 Plan 모드에서 "$create-dev-plan"을 명시적으로 호출한 경우에만 사용합니다.
 ---
 
-# 기능 계획
+# 개발 계획 만들기
 
 계획만 수행합니다. 파일을 쓰거나, 브랜치를 만들거나, 구현하거나, 변경을 일으키는 명령을 실행하지 마세요.
 
@@ -11,7 +11,7 @@ description: 표준 기능 또는 네이티브 목표 루프 기능을 계획하
 
 ## Plan 모드 요구
 
-Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 전환한 뒤 `$plan-feature`를 다시 호출하도록 요청하세요. 저장소 상태를 변경하지 말고 중단하세요.
+Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 전환한 뒤 `$create-dev-plan`을 다시 호출하도록 요청하세요. 저장소 상태를 변경하지 말고 중단하세요.
 
 ## 인터뷰의 근거 확보
 
@@ -75,7 +75,7 @@ Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 �
 - 실패하거나 더 나쁜 agent 소유 실험은 best checkpoint로 복원
 - 예기치 않은 사용자 또는 동시 변경을 버리지 말고 중단
 
-네이티브 goal은 target과 guardrail이 검증되면 끝납니다. 독립 리뷰와 통합은 이후 `$run-feature` 단계이며 네이티브 goal 완료 범위 밖입니다.
+네이티브 goal은 target과 guardrail이 검증되면 끝납니다. 독립 리뷰와 통합은 이후 `$implement-dev-plan` 단계이며 네이티브 goal 완료 범위 밖입니다.
 
 ## 계획 확정
 
@@ -91,7 +91,7 @@ feature_type: <standard-or-goal-loop>
 base_branch: main
 smoke_threshold_seconds: 60
 execution_handoff:
-  skill: save-approved-plan
+  skill: save-dev-plan
   authorization: explicit-user-selection
   automatic_trigger: implement-this-plan
   continuation: save-only
@@ -103,7 +103,7 @@ goal loop에는 네이티브 objective와 budget을 포함해 승인된 모든 �
 요구되는 Plan 모드 형식으로 의사결정이 완료된 계획을 작성하세요.
 
 마지막 인용문에서 host의 "Implement this plan" 동작은 Default 모드로 전환한 뒤
-`$save-approved-plan`에 계획 저장만 위임한다고 안내하세요. 이 선택은 구현, branch 또는
-worktree 생성, `$run-feature` 실행을 승인하지 않습니다. 자동 handoff가 시작되지 않거나
-host에 기본 구현 동작이 없으면 Default 모드로 전환한 뒤 `$save-approved-plan`을 명시적으로
+`$save-dev-plan`에 계획 저장만 위임한다고 안내하세요. 이 선택은 구현, branch 또는
+worktree 생성, `$implement-dev-plan` 실행을 승인하지 않습니다. 자동 handoff가 시작되지 않거나
+host에 기본 구현 동작이 없으면 Default 모드로 전환한 뒤 `$save-dev-plan`을 명시적으로
 호출하도록 안내하세요. 계속 계획하는 경우에는 아무것도 저장하지 마세요.

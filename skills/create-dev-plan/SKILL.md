@@ -1,9 +1,9 @@
 ---
-name: plan-feature
-description: Interview the user and produce a decision-complete standard or native-goal-loop feature plan with a save-only implementation handoff. Use only when the user explicitly invokes "$plan-feature" in Plan mode.
+name: create-dev-plan
+description: Interview the user and produce a decision-complete standard or native-goal-loop development plan with a save-only implementation handoff. Use only when the user explicitly invokes "$create-dev-plan" in Plan mode.
 ---
 
-# Plan Feature
+# Create Dev Plan
 
 Plan only. Do not write files, create branches, implement, or run mutating commands.
 
@@ -13,7 +13,7 @@ machine-readable schema keys exactly.
 
 ## Require Plan mode
 
-If Plan mode is not active, ask the user to switch to Plan mode and invoke `$plan-feature` again.
+If Plan mode is not active, ask the user to switch to Plan mode and invoke `$create-dev-plan` again.
 Stop without changing repository state.
 
 ## Ground the interview
@@ -90,7 +90,7 @@ Use this checkpoint policy:
 - stop rather than discard unexpected user or concurrent changes.
 
 The native goal ends when the target and guardrails are verified. Independent review and
-integration remain later `$run-feature` stages, outside native-goal completion.
+integration remain later `$implement-dev-plan` stages, outside native-goal completion.
 
 ## Finalize the plan
 
@@ -108,7 +108,7 @@ feature_type: <standard-or-goal-loop>
 base_branch: main
 smoke_threshold_seconds: 60
 execution_handoff:
-  skill: save-approved-plan
+  skill: save-dev-plan
   authorization: explicit-user-selection
   automatic_trigger: implement-this-plan
   continuation: save-only
@@ -121,8 +121,8 @@ including the native objective and budgets.
 Produce the decision-complete plan in the required Plan-mode format.
 
 End with a localized blockquote explaining that the host's "Implement this plan" action switches
-to Default mode and delegates only plan persistence to `$save-approved-plan`. This selection does
-not authorize implementation, branch or worktree creation, or `$run-feature`. When the automatic
+to Default mode and delegates only plan persistence to `$save-dev-plan`. This selection does
+not authorize implementation, branch or worktree creation, or `$implement-dev-plan`. When the automatic
 handoff does not start or the host has no native implementation action, tell the user to switch to
-Default mode and invoke `$save-approved-plan` explicitly. Save nothing when the user keeps
+Default mode and invoke `$save-dev-plan` explicitly. Save nothing when the user keeps
 planning.

@@ -1,9 +1,9 @@
 ---
-name: run-feature
-description: Prepare, implement, evaluate, independently review, and integrate a saved standard or goal-loop feature, or diagnose and resume an interrupted feature. Use only when the user explicitly invokes "$run-feature", optionally with a feature ID.
+name: implement-dev-plan
+description: Prepare, implement, evaluate, independently review, and integrate a saved standard or goal-loop development plan, or diagnose and resume interrupted implementation. Use only when the user explicitly invokes "$implement-dev-plan", optionally with a feature ID.
 ---
 
-# Run Feature
+# Implement Dev Plan
 
 Keep implementation ownership in the foreground chat. Create a subagent only for independent
 review. Do not create a separate implementation agent.
@@ -14,7 +14,7 @@ machine-readable schema keys exactly.
 
 ## Resolve the feature
 
-Run only after an explicit `$run-feature [<feature-id>]` invocation. Resolve the feature ID in this
+Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation. Resolve the feature ID in this
 order:
 
 1. explicit ID;

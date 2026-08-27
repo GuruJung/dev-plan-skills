@@ -1,0 +1,7 @@
+interface:
+  display_name: "Create Dev Plan"
+  short_description: "Create a decision-complete development plan"
+  default_prompt: "Use $create-dev-plan to interview me and produce a decision-complete development plan."
+
+policy:
+  allow_implicit_invocation: false

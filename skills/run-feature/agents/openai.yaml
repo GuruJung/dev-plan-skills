@@ -1,7 +1,0 @@
-interface:
-  display_name: "Run Feature"
-  short_description: "Prepare, implement, review, and integrate a feature"
-  default_prompt: "Use $run-feature to prepare and execute the selected saved feature."
-
-policy:
-  allow_implicit_invocation: false
