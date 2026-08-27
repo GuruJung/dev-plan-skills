@@ -18,7 +18,6 @@ count_backups() {
   local root=$1 path kind marker count=0
   for path in \
     "$root"/????????T??????Z-??????-install \
-    "$root"/????????T??????Z-??????-migration \
     "$root"/????????T??????Z-??????-uninstall; do
     [[ -d "$path" && ! -L "$path" ]] || continue
     marker=$path/.dev-plan-workflow-backup
@@ -42,8 +41,6 @@ install_script=$repo_root/scripts/install-global-skills.sh
 uninstall_script=$repo_root/scripts/uninstall-global-skills.sh
 source_root=$repo_root/skills
 skill_names=(create-dev-plan save-dev-plan implement-dev-plan)
-retired_skill_names=(plan-feature save-approved-plan run-feature plan-run-feature)
-retired_skill=plan-run-feature
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/dev plan workflow skills tests.XXXXXX")
 
 cleanup() {
@@ -84,24 +81,12 @@ assert_absent "$legacy_namespace_root/legacy-skills"
 assert_absent "$legacy_namespace_root/legacy-backups"
 assert_absent "$legacy_namespace_root/home/.agents/skills"
 
-make_legacy_source() {
-  local destination=$1
-  mkdir -p -- "$destination"
-  cp -a -- "$repo_root/scripts" "$destination/"
-  cp -a -- "$source_root" "$destination/"
-  cp -a -- "$source_root/create-dev-plan" \
-    "$destination/skills/$retired_skill"
-}
-
 assert_current_install() {
   local root=$1 skill
   for skill in "${skill_names[@]}"; do
     assert_directory "$root/skills/$skill"
     diff -qr -- "$source_root/$skill" "$root/skills/$skill" >/dev/null ||
       fail "installed copy differs from source: $skill"
-  done
-  for skill in "${retired_skill_names[@]}"; do
-    assert_absent "$root/skills/$skill"
   done
   assert_absent "$root/skills/skills-ko"
 }
@@ -115,58 +100,39 @@ run_install "$fresh_root"
 [[ $(count_backups "$fresh_root/backups") == 0 ]] ||
   fail 'idempotent install created a backup'
 
-# The three former public names are backed up, retired, and replaced as one cutover.
-cutover_root=$test_root/'old-name cutover root'
-mkdir -p -- "$cutover_root/skills"
-old_names=(plan-feature save-approved-plan run-feature)
-new_names=(create-dev-plan save-dev-plan implement-dev-plan)
-for index in "${!old_names[@]}"; do
-  cp -a -- "$source_root/${new_names[$index]}" \
-    "$cutover_root/skills/${old_names[$index]}"
-  printf 'old-name sentinel: %s\n' "${old_names[$index]}" \
-    >>"$cutover_root/skills/${old_names[$index]}/SKILL.md"
+# Names outside the current workflow are ignored by install, check, and uninstall.
+legacy_root=$test_root/'unmanaged names root'
+legacy_link_target=$test_root/'unmanaged names target'
+legacy_names=(plan-feature run-feature plan-run-feature)
+mkdir -p -- "$legacy_root/skills" "$legacy_link_target"
+for legacy_name in "${legacy_names[@]}"; do
+  mkdir -- "$legacy_root/skills/$legacy_name"
+  printf 'unmanaged sentinel: %s\n' "$legacy_name" \
+    >"$legacy_root/skills/$legacy_name/sentinel"
 done
-if run_install "$cutover_root" --check >/dev/null 2>&1; then
-  fail '--check accepted installations under the former public names'
-fi
-run_install "$cutover_root"
-assert_current_install "$cutover_root"
-cutover_backup=$(newest_backup "$cutover_root/backups")
-for old_name in "${old_names[@]}"; do
-  assert_directory "$cutover_backup/$old_name"
-  grep -Fq "old-name sentinel: $old_name" "$cutover_backup/$old_name/SKILL.md" ||
-    fail "cutover backup did not preserve $old_name"
+ln -s -- "$legacy_link_target/missing" \
+  "$legacy_root/skills/save-approved-plan"
+run_install "$legacy_root"
+assert_current_install "$legacy_root"
+run_install "$legacy_root" --check
+[[ $(count_backups "$legacy_root/backups") == 0 ]] ||
+  fail 'unmanaged names caused an install backup'
+for legacy_name in "${legacy_names[@]}"; do
+  grep -Fq "unmanaged sentinel: $legacy_name" \
+    "$legacy_root/skills/$legacy_name/sentinel" ||
+    fail "installer changed unmanaged name: $legacy_name"
 done
-[[ $(count_backups "$cutover_root/backups") == 1 ]] ||
-  fail 'old-name cutover did not create exactly one backup set'
-
-# Absolute links from the pre-rename repository root remain managed when live or dangling.
-for link_state in live dangling; do
-  moved_link_root=$test_root/"moved-root $link_state link root"
-  moved_link_source=$test_root/"moved-root $link_state source"/feature_workflow_skills/skills
-  mkdir -p -- "$moved_link_root/skills"
-  if [[ "$link_state" == live ]]; then
-    mkdir -p -- "$moved_link_source"
-  fi
-  for index in "${!old_names[@]}"; do
-    if [[ "$link_state" == live ]]; then
-      cp -a -- "$source_root/${new_names[$index]}" \
-        "$moved_link_source/${old_names[$index]}"
-    fi
-    ln -s -- "$moved_link_source/${old_names[$index]}" \
-      "$moved_link_root/skills/${old_names[$index]}"
-  done
-  run_install "$moved_link_root"
-  assert_current_install "$moved_link_root"
-  moved_link_backup=$(newest_backup "$moved_link_root/backups")
-  for old_name in "${old_names[@]}"; do
-    [[ -L "$moved_link_backup/$old_name" ]] ||
-      fail "$link_state moved-root link was not preserved: $old_name"
-    [[ $(readlink -- "$moved_link_backup/$old_name") == \
-      "$moved_link_source/$old_name" ]] ||
-      fail "$link_state moved-root link target changed: $old_name"
-  done
+[[ -L "$legacy_root/skills/save-approved-plan" ]] ||
+  fail 'installer changed unmanaged symbolic link'
+run_uninstall "$legacy_root"
+for skill in "${skill_names[@]}"; do
+  assert_absent "$legacy_root/skills/$skill"
 done
+for legacy_name in "${legacy_names[@]}"; do
+  assert_directory "$legacy_root/skills/$legacy_name"
+done
+[[ -L "$legacy_root/skills/save-approved-plan" ]] ||
+  fail 'uninstaller changed unmanaged symbolic link'
 
 # Metadata drift, including a lost executable bit, is detected and repaired.
 chmod 0644 "$fresh_root/skills/implement-dev-plan/scripts/integrate-feature.sh"
@@ -192,84 +158,29 @@ for skill in "${skill_names[@]}"; do
   assert_directory "$first_backup/$skill"
 done
 
-# A retired plan-run-feature installation is backed up and removed atomically.
-retirement_root=$test_root/'retirement root'
-run_install "$retirement_root"
-cp -a -- "$source_root/create-dev-plan" "$retirement_root/skills/$retired_skill"
-printf 'retired installation sentinel\n' \
-  >>"$retirement_root/skills/$retired_skill/SKILL.md"
-if run_install "$retirement_root" --check >/dev/null 2>&1; then
-  fail '--check accepted a retired skill installation'
-fi
-run_install "$retirement_root"
-assert_current_install "$retirement_root"
-retirement_backup=$(newest_backup "$retirement_root/backups")
-assert_directory "$retirement_backup/$retired_skill"
-grep -Fq 'retired installation sentinel' \
-  "$retirement_backup/$retired_skill/SKILL.md" ||
-  fail 'retirement backup did not preserve the removed skill'
-
-# Managed legacy links are retired whether their old source still exists or is dangling.
-legacy_live_source=$test_root/'legacy live source'
-legacy_live_root=$test_root/'legacy live root'
-make_legacy_source "$legacy_live_source"
-mkdir -p -- "$legacy_live_root/skills"
-ln -s -- "$legacy_live_source/skills/$retired_skill" \
-  "$legacy_live_root/skills/$retired_skill"
-DEV_PLAN_WORKFLOW_TARGET_ROOT="$legacy_live_root/skills" \
-  DEV_PLAN_WORKFLOW_BACKUP_ROOT="$legacy_live_root/backups" \
-  "$legacy_live_source/scripts/install-global-skills.sh"
-assert_current_install "$legacy_live_root"
-legacy_live_backup=$(newest_backup "$legacy_live_root/backups")
-[[ -L "$legacy_live_backup/$retired_skill" ]] ||
-  fail 'live retired link was not preserved in the backup'
-
-legacy_dangling_source=$test_root/'legacy dangling source'
-legacy_dangling_root=$test_root/'legacy dangling root'
-make_legacy_source "$legacy_dangling_source"
-mkdir -p -- "$legacy_dangling_root/skills"
-ln -s -- "$legacy_dangling_source/skills/$retired_skill" \
-  "$legacy_dangling_root/skills/$retired_skill"
-rm -rf -- "$legacy_dangling_source/skills/$retired_skill"
-DEV_PLAN_WORKFLOW_TARGET_ROOT="$legacy_dangling_root/skills" \
-  DEV_PLAN_WORKFLOW_BACKUP_ROOT="$legacy_dangling_root/backups" \
-  "$legacy_dangling_source/scripts/uninstall-global-skills.sh"
-assert_absent "$legacy_dangling_root/skills/$retired_skill"
-legacy_dangling_backup=$(newest_backup "$legacy_dangling_root/backups")
-[[ -L "$legacy_dangling_backup/$retired_skill" ]] ||
-  fail 'dangling retired link was not preserved in the backup'
-
-unmanaged_retired_root=$test_root/'unmanaged retired root'
-unmanaged_retired_target=$test_root/'unmanaged retired target'
-mkdir -p -- "$unmanaged_retired_root/skills" "$unmanaged_retired_target"
-ln -s -- "$unmanaged_retired_target" \
-  "$unmanaged_retired_root/skills/$retired_skill"
-if run_install "$unmanaged_retired_root" >/dev/null 2>&1; then
-  fail 'installer accepted an unmanaged retired symbolic link'
-fi
-[[ -L "$unmanaged_retired_root/skills/$retired_skill" ]] ||
-  fail 'unmanaged retired symbolic link was changed'
-
-# Managed legacy links become independent copies and their dereferenced contents are backed up.
-migration_root=$test_root/'migration root'
-mkdir -p -- "$migration_root/skills"
+# Symbolic links at current managed names are refused without modification.
+symlink_root=$test_root/'managed-name symlink root'
+mkdir -p -- "$symlink_root/skills"
 for skill in "${skill_names[@]}"; do
-  ln -s -- "$source_root/$skill" "$migration_root/skills/$skill"
+  ln -s -- "$source_root/$skill" "$symlink_root/skills/$skill"
 done
-run_install "$migration_root"
-assert_current_install "$migration_root"
-migration_backup=$(find "$migration_root/backups" -mindepth 1 -maxdepth 1 -type d \
-  -name '????????T??????Z-??????-migration' -print)
-[[ -n "$migration_backup" ]] || fail 'legacy-link migration backup is missing'
+if run_install "$symlink_root" >/dev/null 2>&1; then
+  fail 'installer accepted symbolic links at current managed names'
+fi
+if run_uninstall "$symlink_root" >/dev/null 2>&1; then
+  fail 'uninstaller accepted symbolic links at current managed names'
+fi
 for skill in "${skill_names[@]}"; do
-  assert_directory "$migration_backup/$skill"
-  diff -qr -- "$source_root/$skill" "$migration_backup/$skill" >/dev/null ||
-    fail "migration backup differs from linked source: $skill"
+  [[ -L "$symlink_root/skills/$skill" ]] ||
+    fail "workflow command changed managed-name symbolic link: $skill"
 done
+assert_absent "$symlink_root/backups"
 
 # Stale checks, unmanaged links, broken links, and file conflicts are refused unchanged.
-printf '\nstale\n' >>"$migration_root/skills/implement-dev-plan/SKILL.md"
-if run_install "$migration_root" --check >/dev/null 2>&1; then
+stale_root=$test_root/'stale root'
+run_install "$stale_root"
+printf '\nstale\n' >>"$stale_root/skills/implement-dev-plan/SKILL.md"
+if run_install "$stale_root" --check >/dev/null 2>&1; then
   fail '--check accepted a stale installation'
 fi
 
@@ -324,9 +235,6 @@ cmp -s -- "$lock_snapshot" "$lock_victim" ||
 # A failed promotion restores every previous target, including local installed changes.
 rollback_root=$test_root/'rollback root'
 run_install "$rollback_root"
-cp -a -- "$source_root/create-dev-plan" "$rollback_root/skills/$retired_skill"
-rollback_old_link=$test_root/rollback-source/feature_workflow_skills/skills/plan-feature
-ln -s -- "$rollback_old_link" "$rollback_root/skills/plan-feature"
 printf 'must survive rollback\n' >>"$rollback_root/skills/create-dev-plan/SKILL.md"
 fake_bin=$test_root/'fake bin'
 mkdir -p -- "$fake_bin"
@@ -344,19 +252,12 @@ fi
 for skill in "${skill_names[@]}"; do
   assert_directory "$rollback_root/skills/$skill"
 done
-assert_directory "$rollback_root/skills/$retired_skill"
-[[ -L "$rollback_root/skills/plan-feature" ]] ||
-  fail 'failed promotion did not restore the moved-root retired link'
-[[ $(readlink -- "$rollback_root/skills/plan-feature") == "$rollback_old_link" ]] ||
-  fail 'failed promotion changed the moved-root retired link target'
 grep -Fq 'must survive rollback' "$rollback_root/skills/create-dev-plan/SKILL.md" ||
   fail 'failed promotion did not restore the previous workflow'
 
 # A failed uninstall move also restores the complete workflow.
 uninstall_rollback_root=$test_root/'uninstall rollback root'
 run_install "$uninstall_rollback_root"
-cp -a -- "$source_root/create-dev-plan" \
-  "$uninstall_rollback_root/skills/$retired_skill"
 printf 'must survive uninstall rollback\n' \
   >>"$uninstall_rollback_root/skills/create-dev-plan/SKILL.md"
 if DEV_PLAN_WORKFLOW_TARGET_ROOT="$uninstall_rollback_root/skills" \
@@ -370,7 +271,6 @@ fi
 for skill in "${skill_names[@]}"; do
   assert_directory "$uninstall_rollback_root/skills/$skill"
 done
-assert_directory "$uninstall_rollback_root/skills/$retired_skill"
 grep -Fq 'must survive uninstall rollback' \
   "$uninstall_rollback_root/skills/create-dev-plan/SKILL.md" ||
   fail 'failed uninstall did not restore the previous workflow'
@@ -411,18 +311,15 @@ grep -Fq 'unrelated matching-name directory' \
   fail 'retention deleted an unrelated matching-name directory'
 
 # Uninstall backs up the whole workflow, is idempotent, and supports manual restoration.
-cp -a -- "$source_root/create-dev-plan" "$retention_root/skills/$retired_skill"
 run_uninstall "$retention_root"
 for skill in "${skill_names[@]}"; do
   assert_absent "$retention_root/skills/$skill"
 done
-assert_absent "$retention_root/skills/$retired_skill"
 [[ $(count_backups "$retention_root/backups") == 5 ]] ||
   fail 'uninstall did not preserve the five-backup limit'
 uninstall_backup=$(find "$retention_root/backups" -mindepth 1 -maxdepth 1 -type d \
   -name '????????T??????Z-??????-uninstall' -print | sort | tail -n 1)
 [[ -n "$uninstall_backup" ]] || fail 'uninstall backup is missing'
-assert_directory "$uninstall_backup/$retired_skill"
 for skill in "${skill_names[@]}"; do
   cp -a -- "$uninstall_backup/$skill" "$retention_root/skills/$skill"
   diff -qr -- "$uninstall_backup/$skill" "$retention_root/skills/$skill" >/dev/null ||

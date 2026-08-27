@@ -17,10 +17,8 @@ machine-readable schema keys exactly.
 Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation. Resolve the feature ID in this
 order:
 
-Resolve the repository, locate the bundled `scripts/migrate-workflow-metadata.sh` relative to this
-SKILL.md, and invoke it by absolute path with `--repo <repository-path>`. Use only the returned
-`<git-common-dir>/dev-plan-workflow/`. If the legacy and canonical directories both exist or a
-legacy pending integration exists, stop without merging or deleting content.
+Resolve the absolute common Git directory and find saved features under
+`<git-common-dir>/dev-plan-workflow/plans/`.
 
 1. explicit ID;
 2. the most recently planned, saved, or run feature in the conversation;

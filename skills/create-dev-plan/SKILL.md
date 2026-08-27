@@ -100,12 +100,9 @@ integration remain later `$implement-dev-plan` stages, outside native-goal compl
 ## Finalize the plan
 
 Generate `YYYYMMDD-<slug>` from the feature title. Inspect
-`<git-common-dir>/dev-plan-workflow/features/` and
+`<git-common-dir>/dev-plan-workflow/plans/` and
 `docs/superpowers/plans/<id>/plan.md` in the main worktree read-only. Append `-2`, `-3`, and so on
-for a collision. If the new Git metadata directory is absent and only
-`<git-common-dir>/feature-workflow/` exists, treat it as a pending one-time migration and read it
-only for collision detection. Do not create or move directories in this skill. Stop and report a
-conflict if both Git metadata directories exist.
+for a collision.
 
 Allow only `standard` or `goal-loop` in the final frontmatter:
 

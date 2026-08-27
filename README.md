@@ -7,12 +7,10 @@
 선택한 같은 대화의 save-only handoff로 활성화한다. 저장 후 구현은 시작하지 않으며
 `$implement-dev-plan <id>`를 사용자가 별도로 호출한다.
 
-계획은 먼저 `<git-common-dir>/dev-plan-workflow/features/<id>/plan.md`에 임시 저장된다.
+계획은 먼저 `<git-common-dir>/dev-plan-workflow/plans/<id>/plan.md`에 임시 저장된다.
 구현을 시작하면 feature worktree의 `docs/superpowers/plans/<id>/plan.md`로 승격되어 계획
 전용 commit에 포함되고, 기능 통합과 함께 main에 들어간다. 실행 상태, 평가, 리뷰와 통합
-복구 자료는 계속 `<git-common-dir>/dev-plan-workflow/`에 둔다. 기존
-`<git-common-dir>/feature-workflow/`만 있으면 pending integration이 없을 때 전체 디렉터리를
-새 이름으로 한 번 원자적으로 이동한다.
+복구 자료는 계속 `<git-common-dir>/dev-plan-workflow/`에 둔다.
 
 ## 스킬 작성 언어와 동기화
 
@@ -49,21 +47,17 @@ scripts/install-global-skills.sh --check
 되돌린다. 설치와 제거는 같은 배타 잠금을 사용하므로 동시에 실행해도 순서대로 처리된다.
 저장소를 수정하거나 이동한 뒤에는 설치 스크립트를 다시 실행해야 한다.
 
-이전 이름인 `plan-feature`, `save-approved-plan`, `run-feature`, `plan-run-feature`의 독립
-디렉터리 또는 이 저장소를 가리키는 관리형 symbolic link는 다음 설치 또는 제거 때
-retired 대상으로 백업한 뒤 제거한다. 실패 시에는 활성 세 스킬과 함께 원래 상태로
-복원한다.
+설치와 제거는 현재 세 스킬 이름만 관리하며 다른 이름의 디렉터리, 파일, symbolic link는
+검사하거나 변경하지 않는다. 현재 관리 이름에 symbolic link가 있으면 대상을 따라가거나
+교체하지 않고 오류로 중단한다.
 
-이 저장소를 가리키는 이전 방식의 심볼릭 링크는 최초 설치 때 실제 콘텐츠가 백업되고
-일반 디렉터리 설치본으로 전환된다. 다른 링크나 일반 파일은 덮어쓰지 않는다.
-
-설치·마이그레이션·제거 백업은
+설치·제거 백업은
 `~/.agents/skill-backups/dev-plan-workflow/`에 워크플로 전체 단위로 저장하며, 관리되는
 최근 5세트만 유지한다. 격리된 검증에는 `DEV_PLAN_WORKFLOW_TARGET_ROOT`와
 `DEV_PLAN_WORKFLOW_BACKUP_ROOT` 환경 변수를 함께 지정할 수 있다. 이전
 `FEATURE_WORKFLOW_*`, `~/.agents/skill-backups/feature-workflow/`, `.feature-workflow-*`
-namespace는 호환하거나 자동 이전하지 않는다. 이전 환경변수가 설정되어 있으면 기본
-전역 경로로 조용히 fallback하지 않고 오류로 중단한다.
+namespace는 지원하지 않는다. 이전 환경변수가 설정되어 있으면 기본 전역 경로로 조용히
+fallback하지 않고 오류로 중단한다.
 
 ## 제거와 복원
 
@@ -71,16 +65,12 @@ namespace는 호환하거나 자동 이전하지 않는다. 이전 환경변수�
 scripts/uninstall-global-skills.sh
 ```
 
-제거 스크립트는 현재 설치본을 백업한 뒤 세 스킬과 남아 있는 retired 설치본을 함께 제거한다. 이미 설치되어 있지
-않으면 변경 없이 성공한다.
+제거 스크립트는 현재 설치본을 백업한 뒤 세 스킬을 함께 제거한다. 이미 설치되어 있지
+않으면 변경 없이 성공한다. 다른 이름의 항목은 그대로 둔다.
 
 백업을 수동으로 복원하려면 먼저 아래 대상이 모두 없는지 확인한다.
 
 ```bash
-test ! -e "$HOME/.agents/skills/plan-feature"
-test ! -e "$HOME/.agents/skills/plan-run-feature"
-test ! -e "$HOME/.agents/skills/save-approved-plan"
-test ! -e "$HOME/.agents/skills/run-feature"
 test ! -e "$HOME/.agents/skills/create-dev-plan"
 test ! -e "$HOME/.agents/skills/save-dev-plan"
 test ! -e "$HOME/.agents/skills/implement-dev-plan"
@@ -90,8 +80,7 @@ test ! -e "$HOME/.agents/skills/implement-dev-plan"
 확인한다.
 
 ```bash
-for skill in create-dev-plan save-dev-plan implement-dev-plan \
-  plan-feature save-approved-plan run-feature plan-run-feature; do
+for skill in create-dev-plan save-dev-plan implement-dev-plan; do
   if test -d "$HOME/.agents/skill-backups/dev-plan-workflow/<backup-set>/$skill"; then
     cp -a "$HOME/.agents/skill-backups/dev-plan-workflow/<backup-set>/$skill" \
       "$HOME/.agents/skills/$skill"

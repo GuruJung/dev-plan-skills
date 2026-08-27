@@ -13,11 +13,8 @@ description: 저장된 표준 또는 목표 루프 개발 계획을 준비, 구�
 
 `$implement-dev-plan [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요. 기능 ID는 다음 순서로 찾으세요.
 
-저장소를 확인한 뒤 이 SKILL.md를 기준으로 bundled
-`scripts/migrate-workflow-metadata.sh`를 찾아 절대 경로로 `--repo <repository-path>`와 함께
-호출합니다. helper가 반환한 `<git-common-dir>/dev-plan-workflow/`만 사용하세요. legacy와
-canonical 디렉터리가 모두 있거나 legacy pending integration이 있으면 내용을 합치거나
-삭제하지 말고 중단하세요.
+절대 공용 Git 디렉터리를 확인하고 `<git-common-dir>/dev-plan-workflow/plans/`에서 저장된
+기능을 찾으세요.
 
 1. 명시적인 ID
 2. 대화에서 가장 최근에 계획, 저장, 실행한 기능

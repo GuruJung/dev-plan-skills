@@ -155,9 +155,9 @@ assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
   'Include a localized `User Decisions` section in every plan.'
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
-  '<git-common-dir>/dev-plan-workflow/features/<id>/'
+  '<git-common-dir>/dev-plan-workflow/plans/<id>/'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
-  '<git-common-dir>/dev-plan-workflow/features/<id>/'
+  '<git-common-dir>/dev-plan-workflow/plans/<id>/'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
   '`docs(plan): add <id>` commit'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
@@ -178,16 +178,8 @@ assert_contains "$repo_root/scripts/global-skills-common.sh" \
   'legacy FEATURE_WORKFLOW_* variables are unsupported; use DEV_PLAN_WORKFLOW_*'
 assert_absent "$repo_root/scripts" '.feature-workflow-'
 
-[[ -x "$repo_root/skills/save-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
-  fail 'save metadata migration helper is not executable'
-[[ -x "$repo_root/skills/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
-  fail 'implementation metadata migration helper is not executable'
 [[ -x "$repo_root/skills/implement-dev-plan/scripts/promote-plan.sh" ]] ||
   fail 'plan promotion helper is not executable'
-cmp -s \
-  "$repo_root/skills/save-dev-plan/scripts/migrate-workflow-metadata.sh" \
-  "$repo_root/skills/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ||
-  fail 'metadata migration helper copies differ'
 
 # A valid repository can record and verify a complete synchronization state.
 make_case valid

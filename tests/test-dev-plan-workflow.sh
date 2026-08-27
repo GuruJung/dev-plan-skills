@@ -6,10 +6,6 @@ fail() {
   exit 1
 }
 
-assert_directory() {
-  [[ -d "$1" && ! -L "$1" ]] || fail "expected plain directory: $1"
-}
-
 assert_absent() {
   [[ ! -e "$1" && ! -L "$1" ]] || fail "expected absent path: $1"
 }
@@ -24,8 +20,6 @@ expect_failure() {
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
-save_migrator=$repo_root/skills/save-dev-plan/scripts/migrate-workflow-metadata.sh
-implement_migrator=$repo_root/skills/implement-dev-plan/scripts/migrate-workflow-metadata.sh
 promoter=$repo_root/skills/implement-dev-plan/scripts/promote-plan.sh
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/dev plan workflow tests.XXXXXX")
 
@@ -48,62 +42,12 @@ make_repo() {
   git -C "$case_root" commit -qm 'Create fixture repository'
 }
 
-cmp -s -- "$save_migrator" "$implement_migrator" ||
-  fail 'installed metadata migration helpers differ'
-
-# A repository without metadata gets the canonical directory and remains idempotent.
-make_repo empty
-workflow_path=$($save_migrator --repo "$case_root")
-[[ "$workflow_path" == "$case_root/.git/dev-plan-workflow" ]] ||
-  fail "unexpected canonical workflow path: $workflow_path"
-assert_directory "$workflow_path"
-[[ $($implement_migrator --repo "$case_root") == "$workflow_path" ]] ||
-  fail 'canonical metadata lookup is not idempotent'
-
-# Legacy metadata is moved as one directory, preserving feature state and its lock.
-make_repo legacy
-mkdir -p -- "$case_root/.git/feature-workflow/features/20260827-example"
-printf 'legacy state\n' >"$case_root/.git/feature-workflow/features/20260827-example/state.json"
-printf 'lock sentinel\n' >"$case_root/.git/feature-workflow/integration.lock"
-$save_migrator --repo "$case_root" >/dev/null
-assert_absent "$case_root/.git/feature-workflow"
-assert_directory "$case_root/.git/dev-plan-workflow/features/20260827-example"
-grep -Fq 'legacy state' \
-  "$case_root/.git/dev-plan-workflow/features/20260827-example/state.json" ||
-  fail 'legacy feature state was not preserved'
-grep -Fq 'lock sentinel' "$case_root/.git/dev-plan-workflow/integration.lock" ||
-  fail 'legacy integration lock was not preserved'
-
-# Ambiguous, unsafe, and pending legacy states are refused unchanged.
-make_repo conflict
-mkdir -- "$case_root/.git/feature-workflow" "$case_root/.git/dev-plan-workflow"
-expect_failure 'migrator accepted both legacy and canonical directories' \
-  "$save_migrator" --repo "$case_root"
-assert_directory "$case_root/.git/feature-workflow"
-assert_directory "$case_root/.git/dev-plan-workflow"
-
-make_repo pending
-mkdir -- "$case_root/.git/feature-workflow"
-printf 'pending\n' >"$case_root/.git/feature-workflow/integration.pending"
-expect_failure 'migrator accepted a pending legacy integration' \
-  "$save_migrator" --repo "$case_root"
-assert_directory "$case_root/.git/feature-workflow"
-assert_absent "$case_root/.git/dev-plan-workflow"
-
-make_repo symlink
-mkdir -- "$case_root/metadata-target"
-ln -s -- "$case_root/metadata-target" "$case_root/.git/feature-workflow"
-expect_failure 'migrator accepted a symbolic-link legacy directory' \
-  "$save_migrator" --repo "$case_root"
-[[ -L "$case_root/.git/feature-workflow" ]] ||
-  fail 'migrator changed a symbolic-link legacy directory'
-
 # Promotion creates a plan-only commit, removes the temporary copy, and is idempotent.
 make_repo promotion
 feature_id=20260827-example
 git -C "$case_root" switch -qc "feature/$feature_id"
 metadata_dir=$case_root/.git/dev-plan-workflow
-temporary_dir=$metadata_dir/features/$feature_id
+temporary_dir=$metadata_dir/plans/$feature_id
 mkdir -p -- "$temporary_dir"
 printf '# Example plan\n\n## User Decisions\n\n- Keep it small.\n' >"$temporary_dir/plan.md"
 $promoter \
@@ -130,7 +74,7 @@ $promoter \
 make_repo destination-conflict
 git -C "$case_root" switch -qc "feature/$feature_id"
 metadata_dir=$case_root/.git/dev-plan-workflow
-temporary_dir=$metadata_dir/features/$feature_id
+temporary_dir=$metadata_dir/plans/$feature_id
 mkdir -p -- "$temporary_dir" "$case_root/docs/superpowers/plans/$feature_id"
 printf 'temporary plan\n' >"$temporary_dir/plan.md"
 printf 'different plan\n' >"$case_root/docs/superpowers/plans/$feature_id/plan.md"
@@ -145,7 +89,7 @@ grep -Fq 'different plan' "$case_root/docs/superpowers/plans/$feature_id/plan.md
 make_repo unrelated-change
 git -C "$case_root" switch -qc "feature/$feature_id"
 metadata_dir=$case_root/.git/dev-plan-workflow
-temporary_dir=$metadata_dir/features/$feature_id
+temporary_dir=$metadata_dir/plans/$feature_id
 mkdir -p -- "$temporary_dir"
 printf 'temporary plan\n' >"$temporary_dir/plan.md"
 printf 'unrelated\n' >"$case_root/unrelated.txt"

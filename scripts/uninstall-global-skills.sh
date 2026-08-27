@@ -36,15 +36,10 @@ acquire_workflow_lock
 validate_roots
 
 has_existing=false
-for skill in "${managed_skill_names[@]}"; do
+for skill in "${skill_names[@]}"; do
   target=$target_root/$skill
   if [[ -L "$target" ]]; then
-    if ! is_retired_skill "$skill"; then
-      fail "refusing to remove symbolic-link target: $target"
-    fi
-    is_managed_retired_link "$target" "$skill" ||
-      fail "refusing to remove unmanaged retired symbolic link: $target"
-    has_existing=true
+    fail "refusing to remove symbolic-link target: $target"
   elif [[ -e "$target" ]]; then
     [[ -d "$target" ]] || fail "target exists and is not a directory: $target"
     has_existing=true
@@ -66,7 +61,7 @@ recover_uninstall() {
   local skill target
   local recovery_failed=false
 
-  for skill in "${managed_skill_names[@]}"; do
+  for skill in "${skill_names[@]}"; do
     target=$target_root/$skill
     if path_exists "$transaction_dir/$skill"; then
       if path_exists "$target" || ! mv -- "$transaction_dir/$skill" "$target"; then
@@ -98,7 +93,7 @@ cleanup_transaction() {
 trap cleanup_transaction EXIT
 
 move_failed=false
-for skill in "${managed_skill_names[@]}"; do
+for skill in "${skill_names[@]}"; do
   target=$target_root/$skill
   if path_exists "$target"; then
     if ! mv -- "$target" "$transaction_dir/$skill"; then

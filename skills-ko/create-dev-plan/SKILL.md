@@ -84,12 +84,9 @@ Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 �
 
 ## 계획 확정
 
-기능 제목으로 `YYYYMMDD-<slug>`를 생성하세요. `<git-common-dir>/dev-plan-workflow/features/`와
+기능 제목으로 `YYYYMMDD-<slug>`를 생성하세요. `<git-common-dir>/dev-plan-workflow/plans/`와
 main worktree의 `docs/superpowers/plans/<id>/plan.md`를 읽기 전용으로 조사하고 충돌하면
-`-2`, `-3` 등을 붙이세요. 새 Git 메타데이터 디렉터리가 아직 없고
-`<git-common-dir>/feature-workflow/`만 있으면 pending one-time migration으로 보고 ID 충돌
-확인에만 읽으세요. 이 스킬에서 디렉터리를 이동하거나 생성하지 마세요. 두 Git 메타데이터
-디렉터리가 모두 있으면 충돌을 보고 중단하세요.
+`-2`, `-3` 등을 붙이세요.
 
 최종 frontmatter에서는 `standard` 또는 `goal-loop`만 허용하세요.
 

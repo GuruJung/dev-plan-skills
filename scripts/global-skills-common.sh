@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
 skill_names=(create-dev-plan save-dev-plan implement-dev-plan)
-retired_skill_names=(plan-feature save-approved-plan run-feature plan-run-feature)
-managed_skill_names=("${skill_names[@]}" "${retired_skill_names[@]}")
 
 fail() {
   printf 'error: %s\n' "$*" >&2
@@ -11,31 +9,6 @@ fail() {
 
 path_exists() {
   [[ -e "$1" || -L "$1" ]]
-}
-
-is_retired_skill() {
-  local candidate=$1 retired
-  for retired in "${retired_skill_names[@]}"; do
-    [[ "$candidate" == "$retired" ]] && return 0
-  done
-  return 1
-}
-
-is_managed_retired_link() {
-  local target=$1 skill=$2 actual expected
-
-  [[ -L "$target" ]] || return 1
-  actual=$(readlink -m -- "$target")
-  expected=$(readlink -m -- "$source_root/$skill")
-  [[ "$actual" == "$expected" ]] && return 0
-
-  # The repository bootstrap renamed feature_workflow_skills to dev-plan-skills. Absolute links
-  # created before that move are now dangling, so their former source can only be identified by
-  # the exact managed repository/source suffix.
-  case $actual in
-    */feature_workflow_skills/skills/"$skill") return 0 ;;
-  esac
-  return 1
 }
 
 assert_plain_directory_or_absent() {
@@ -112,25 +85,15 @@ create_backup_set() {
   done
   mkdir -- "$temporary_path"
 
-  for skill in "${managed_skill_names[@]}"; do
+  for skill in "${skill_names[@]}"; do
     target=$target_root/$skill
     if path_exists "$target"; then
-      if [[ -L "$target" ]] && is_retired_skill "$skill"; then
-        cp -a -- "$target" "$temporary_path/$skill"
-        [[ -L "$temporary_path/$skill" ]] &&
-          [[ $(readlink -- "$target") == $(readlink -- "$temporary_path/$skill") ]] || {
-          rm -rf -- "$temporary_path"
-          fail "backup verification failed for retired link $skill"
-          return
-        }
-      else
-        copy_directory_contents "$target" "$temporary_path/$skill"
-        directories_equal "$target" "$temporary_path/$skill" || {
-          rm -rf -- "$temporary_path"
-          fail "backup verification failed for $skill"
-          return
-        }
-      fi
+      copy_directory_contents "$target" "$temporary_path/$skill"
+      directories_equal "$target" "$temporary_path/$skill" || {
+        rm -rf -- "$temporary_path"
+        fail "backup verification failed for $skill"
+        return
+      }
     fi
   done
 
@@ -138,7 +101,7 @@ create_backup_set() {
     printf 'schema_version=1\n'
     printf 'kind=%s\n' "$kind"
     printf 'created_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf 'skills=%s\n' "${managed_skill_names[*]}"
+    printf 'skills=%s\n' "${skill_names[*]}"
   } >"$temporary_path/.dev-plan-workflow-backup"
 
   mv -- "$temporary_path" "$final_path"
@@ -155,7 +118,6 @@ prune_backups() {
   done < <(
     for path in \
       "$backup_root"/????????T??????Z-??????-install \
-      "$backup_root"/????????T??????Z-??????-migration \
       "$backup_root"/????????T??????Z-??????-uninstall; do
       [[ -d "$path" && ! -L "$path" ]] || continue
       marker=$path/.dev-plan-workflow-backup
@@ -227,16 +189,8 @@ validate_sources() {
 
   [[ -x "$source_root/implement-dev-plan/scripts/integrate-feature.sh" ]] ||
     fail 'integration helper is not executable'
-  [[ -x "$source_root/save-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
-    fail 'save metadata migration helper is not executable'
-  [[ -x "$source_root/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ]] ||
-    fail 'implementation metadata migration helper is not executable'
   [[ -x "$source_root/implement-dev-plan/scripts/promote-plan.sh" ]] ||
     fail 'plan promotion helper is not executable'
-  cmp -s \
-    "$source_root/save-dev-plan/scripts/migrate-workflow-metadata.sh" \
-    "$source_root/implement-dev-plan/scripts/migrate-workflow-metadata.sh" ||
-    fail 'metadata migration helper copies differ'
 }
 
 initialize_paths() {

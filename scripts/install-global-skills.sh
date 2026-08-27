@@ -44,19 +44,12 @@ validate_roots
 
 all_current=true
 has_existing=false
-has_legacy_link=false
 for skill in "${skill_names[@]}"; do
   source_dir=$source_root/$skill
   target=$target_root/$skill
 
   if [[ -L "$target" ]]; then
-    actual=$(readlink -f -- "$target" || true)
-    expected=$(readlink -f -- "$source_dir")
-    [[ -n "$actual" && "$actual" == "$expected" ]] ||
-      fail "refusing to replace unmanaged or broken symbolic link: $target"
-    has_existing=true
-    has_legacy_link=true
-    all_current=false
+    fail "refusing to replace symbolic-link target: $target"
   elif [[ -e "$target" ]]; then
     [[ -d "$target" ]] || fail "target exists and is not a directory: $target"
     has_existing=true
@@ -64,21 +57,6 @@ for skill in "${skill_names[@]}"; do
       all_current=false
     fi
   else
-    all_current=false
-  fi
-done
-
-for skill in "${retired_skill_names[@]}"; do
-  target=$target_root/$skill
-  if [[ -L "$target" ]]; then
-    is_managed_retired_link "$target" "$skill" ||
-      fail "refusing to retire unmanaged symbolic link: $target"
-    has_existing=true
-    has_legacy_link=true
-    all_current=false
-  elif [[ -e "$target" ]]; then
-    [[ -d "$target" ]] || fail "retired target exists and is not a directory: $target"
-    has_existing=true
     all_current=false
   fi
 done
@@ -108,7 +86,7 @@ recover_installation() {
   local recovery_failed=false
 
   mkdir -p -- "$failed_root"
-  for skill in "${managed_skill_names[@]}"; do
+  for skill in "${skill_names[@]}"; do
     target=$target_root/$skill
     if path_exists "$rollback_dir/$skill"; then
       if path_exists "$target" && ! mv -- "$target" "$failed_root/$skill"; then
@@ -166,15 +144,11 @@ done
 
 backup_path=''
 if [[ "$has_existing" == true ]]; then
-  backup_kind=install
-  if [[ "$has_legacy_link" == true ]]; then
-    backup_kind=migration
-  fi
-  backup_path=$(create_backup_set "$backup_kind")
+  backup_path=$(create_backup_set install)
 fi
 
 promotion_failed=false
-for skill in "${managed_skill_names[@]}"; do
+for skill in "${skill_names[@]}"; do
   target=$target_root/$skill
   if path_exists "$target"; then
     if ! mv -- "$target" "$rollback_dir/$skill"; then
@@ -213,11 +187,7 @@ transaction_finished=true
 trap - EXIT
 prune_backups
 
-if [[ "$has_legacy_link" == true ]]; then
-  printf 'migrated: symbolic links replaced with independent skill copies\n'
-else
-  printf 'installed: all global skill copies are current\n'
-fi
+printf 'installed: all global skill copies are current\n'
 if [[ -n "$backup_path" ]]; then
   printf 'backup: %s\n' "$backup_path"
 fi

@@ -83,7 +83,7 @@ branch=$(git -C "$feature_root" symbolic-ref --quiet --short HEAD 2>/dev/null) |
   fail "unexpected feature branch: $branch"
 
 relative_plan=docs/superpowers/plans/$feature_id/plan.md
-temporary_plan=$metadata_dir/features/$feature_id/plan.md
+temporary_plan=$metadata_dir/plans/$feature_id/plan.md
 tracked_plan=$feature_root/$relative_plan
 
 if ! path_exists "$temporary_plan"; then
