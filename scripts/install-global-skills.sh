@@ -71,9 +71,7 @@ done
 for skill in "${retired_skill_names[@]}"; do
   target=$target_root/$skill
   if [[ -L "$target" ]]; then
-    actual=$(readlink -m -- "$target")
-    expected=$(readlink -m -- "$source_root/$skill")
-    [[ "$actual" == "$expected" ]] ||
+    is_managed_retired_link "$target" "$skill" ||
       fail "refusing to retire unmanaged symbolic link: $target"
     has_existing=true
     has_legacy_link=true

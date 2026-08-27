@@ -42,9 +42,7 @@ for skill in "${managed_skill_names[@]}"; do
     if ! is_retired_skill "$skill"; then
       fail "refusing to remove symbolic-link target: $target"
     fi
-    actual=$(readlink -m -- "$target")
-    expected=$(readlink -m -- "$source_root/$skill")
-    [[ "$actual" == "$expected" ]] ||
+    is_managed_retired_link "$target" "$skill" ||
       fail "refusing to remove unmanaged retired symbolic link: $target"
     has_existing=true
   elif [[ -e "$target" ]]; then

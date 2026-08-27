@@ -21,6 +21,23 @@ is_retired_skill() {
   return 1
 }
 
+is_managed_retired_link() {
+  local target=$1 skill=$2 actual expected
+
+  [[ -L "$target" ]] || return 1
+  actual=$(readlink -m -- "$target")
+  expected=$(readlink -m -- "$source_root/$skill")
+  [[ "$actual" == "$expected" ]] && return 0
+
+  # The repository bootstrap renamed feature_workflow_skills to dev-plan-skills. Absolute links
+  # created before that move are now dangling, so their former source can only be identified by
+  # the exact managed repository/source suffix.
+  case $actual in
+    */feature_workflow_skills/skills/"$skill") return 0 ;;
+  esac
+  return 1
+}
+
 assert_plain_directory_or_absent() {
   local path=$1
 

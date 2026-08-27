@@ -126,6 +126,34 @@ done
 [[ $(count_backups "$cutover_root/backups") == 1 ]] ||
   fail 'old-name cutover did not create exactly one backup set'
 
+# Absolute links from the pre-rename repository root remain managed when live or dangling.
+for link_state in live dangling; do
+  moved_link_root=$test_root/"moved-root $link_state link root"
+  moved_link_source=$test_root/"moved-root $link_state source"/feature_workflow_skills/skills
+  mkdir -p -- "$moved_link_root/skills"
+  if [[ "$link_state" == live ]]; then
+    mkdir -p -- "$moved_link_source"
+  fi
+  for index in "${!old_names[@]}"; do
+    if [[ "$link_state" == live ]]; then
+      cp -a -- "$source_root/${new_names[$index]}" \
+        "$moved_link_source/${old_names[$index]}"
+    fi
+    ln -s -- "$moved_link_source/${old_names[$index]}" \
+      "$moved_link_root/skills/${old_names[$index]}"
+  done
+  run_install "$moved_link_root"
+  assert_current_install "$moved_link_root"
+  moved_link_backup=$(newest_backup "$moved_link_root/backups")
+  for old_name in "${old_names[@]}"; do
+    [[ -L "$moved_link_backup/$old_name" ]] ||
+      fail "$link_state moved-root link was not preserved: $old_name"
+    [[ $(readlink -- "$moved_link_backup/$old_name") == \
+      "$moved_link_source/$old_name" ]] ||
+      fail "$link_state moved-root link target changed: $old_name"
+  done
+done
+
 # Metadata drift, including a lost executable bit, is detected and repaired.
 chmod 0644 "$fresh_root/skills/implement-dev-plan/scripts/integrate-feature.sh"
 if run_install "$fresh_root" --check >/dev/null 2>&1; then
@@ -283,6 +311,8 @@ cmp -s -- "$lock_snapshot" "$lock_victim" ||
 rollback_root=$test_root/'rollback root'
 run_install "$rollback_root"
 cp -a -- "$source_root/create-dev-plan" "$rollback_root/skills/$retired_skill"
+rollback_old_link=$test_root/rollback-source/feature_workflow_skills/skills/plan-feature
+ln -s -- "$rollback_old_link" "$rollback_root/skills/plan-feature"
 printf 'must survive rollback\n' >>"$rollback_root/skills/create-dev-plan/SKILL.md"
 fake_bin=$test_root/'fake bin'
 mkdir -p -- "$fake_bin"
@@ -301,6 +331,10 @@ for skill in "${skill_names[@]}"; do
   assert_directory "$rollback_root/skills/$skill"
 done
 assert_directory "$rollback_root/skills/$retired_skill"
+[[ -L "$rollback_root/skills/plan-feature" ]] ||
+  fail 'failed promotion did not restore the moved-root retired link'
+[[ $(readlink -- "$rollback_root/skills/plan-feature") == "$rollback_old_link" ]] ||
+  fail 'failed promotion changed the moved-root retired link target'
 grep -Fq 'must survive rollback' "$rollback_root/skills/create-dev-plan/SKILL.md" ||
   fail 'failed promotion did not restore the previous workflow'
 
