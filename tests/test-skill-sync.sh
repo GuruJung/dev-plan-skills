@@ -59,6 +59,32 @@ assert_path_absent() {
   [[ ! -e "$1" && ! -L "$1" ]] || fail "unexpected legacy path: $1"
 }
 
+# Repository guidance selects the authoritative side per modified pair without a fixed language.
+assert_contains "$repo_root/AGENTS.md" \
+  '`skills-ko/<skill>/SKILL.md`와 `skills/<skill>/SKILL.md`는 의미와 강도가 같은 한글·영문 대응본이며 어느 언어도 고정 원본이 아니다.'
+assert_contains "$repo_root/AGENTS.md" \
+  '정상 수정 후보는 정확히 ` M`, `M `, `MM` 상태인 파일이다.'
+assert_contains "$repo_root/AGENTS.md" \
+  '한쪽만 후보이면 그 파일을 원본으로 삼고, 양쪽 모두 후보이면 mtime이 더 최신인 파일을 원본으로 삼는다.'
+assert_contains "$repo_root/AGENTS.md" \
+  'mtime이 같거나 `A`, `D`, `R`, `U`, untracked 등 `M` 이외의 변경이 있으면'
+assert_contains "$repo_root/AGENTS.md" \
+  '대응본을 저장한 뒤 mtime이나 Git 상태가 바뀌어도 다시 선정하지 않으며'
+assert_contains "$repo_root/README.md" \
+  '어느 언어도 고정 편집 원본은 아니다.'
+assert_contains "$repo_root/README.md" \
+  "stat -c '%y %n' -- skills-ko/<skill>/SKILL.md skills/<skill>/SKILL.md"
+assert_contains "$repo_root/README.md" \
+  '기록 명령은 번역이나 원본 선정을 수행하지 않으며'
+assert_absent "$repo_root/AGENTS.md" \
+  '`skills-ko/<skill>/SKILL.md`가 스킬 동작을 정의하는 한글 기준 원본이다.'
+assert_absent "$repo_root/AGENTS.md" '한글 원본'
+assert_absent "$repo_root/README.md" \
+  '`skills-ko/`의 `SKILL.md`가 편집 기준인 한글 원본이고'
+assert_absent "$repo_root/README.md" \
+  '스킬의 행동을 수정할 때는 먼저 `skills-ko/<skill>/SKILL.md`에 의도를 한국어로'
+assert_absent "$repo_root/README.md" '한글 원본'
+
 # Planning infers a clear feature type and only asks between the two supported types when unclear.
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
   '유형이 명확하면 `standard` 또는 `goal-loop`를 직접 선택하고'
