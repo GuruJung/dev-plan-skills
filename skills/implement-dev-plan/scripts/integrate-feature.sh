@@ -122,14 +122,6 @@ fi
 command -v git >/dev/null || die_usage "git is required"
 command -v flock >/dev/null || die_usage "flock is required"
 
-local_plan=$metadata_dir/plans/$feature_id/plan.md
-if [[ -L "$local_plan" || -e "$local_plan" && ! -f "$local_plan" ]]; then
-  die_usage "local plan must be a plain file"
-fi
-if [[ ! -f "$local_plan" && "$recover_pending" != smoke ]]; then
-  die_usage "local plan must be a plain file"
-fi
-
 resolve_root() {
   git -C "$1" rev-parse --path-format=absolute --show-toplevel 2>/dev/null
 }
@@ -167,6 +159,27 @@ metadata_root=$(CDPATH= cd -- "$metadata_dir" 2>/dev/null && pwd -P) || {
   exit 22
 }
 local_plan=$workflow_dir/plans/$feature_id/plan.md
+plans_dir=$workflow_dir/plans
+feature_metadata_dir=$plans_dir/$feature_id
+completion_file=$feature_metadata_dir/integration.complete
+[[ -d "$plans_dir" && ! -L "$plans_dir" ]] || {
+  printf 'status=invalid-or-dirty-worktree reason=invalid-plans-dir\n' >&2
+  exit 22
+}
+[[ -d "$feature_metadata_dir" && ! -L "$feature_metadata_dir" ]] || {
+  printf 'status=invalid-or-dirty-worktree reason=invalid-feature-metadata-dir\n' >&2
+  exit 22
+}
+if [[ -L "$completion_file" || -e "$completion_file" && ! -f "$completion_file" ]]; then
+  printf 'status=invalid-or-dirty-worktree reason=invalid-completion-marker\n' >&2
+  exit 22
+fi
+if [[ -L "$local_plan" || -e "$local_plan" && ! -f "$local_plan" ]]; then
+  die_usage "local plan must be a plain file"
+fi
+if [[ ! -f "$local_plan" && "$recover_pending" != smoke && ! -f "$completion_file" ]]; then
+  die_usage "local plan must be a plain file"
+fi
 mkdir -p "$workflow_dir"
 lock_file=$workflow_dir/integration.lock
 pending_file=$workflow_dir/integration.pending
@@ -197,6 +210,24 @@ fi
 actual_main=$(git -C "$main_root" rev-parse HEAD)
 actual_feature=$(git -C "$feature_root" rev-parse HEAD)
 
+if [[ -f "$completion_file" && ! -f "$pending_file" ]]; then
+  mapfile -t completion_values < "$completion_file"
+  if ((${#completion_values[@]} != 4)) ||
+     [[ "${completion_values[0]}" != "$expected_main" ]] ||
+     [[ "${completion_values[1]}" != "$expected_feature" ]] ||
+     [[ "${completion_values[2]}" != "$main_root" ]] ||
+     [[ "${completion_values[3]}" != "$feature_root" ]] ||
+     [[ "$actual_main" != "$expected_feature" ]] ||
+     [[ "$actual_feature" != "$expected_feature" ]]; then
+    printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
+      "$completion_file" >&2
+    exit 31
+  fi
+  printf 'status=integrated pre=%s head=%s smoke_count=%s recovered=true marker=%q\n' \
+    "$expected_main" "$expected_feature" "${#smoke_commands[@]}" "$completion_file"
+  exit 0
+fi
+
 if [[ -f "$pending_file" ]]; then
   if [[ -z "$recover_pending" ]]; then
     printf 'status=recovery-required reason=pending-integration marker=%q\n' "$pending_file" >&2
@@ -225,6 +256,8 @@ if [[ -f "$pending_file" ]]; then
   fi
 
   if [[ "$recover_pending" == rollback ]]; then
+    [[ ! -f "$completion_file" ]] ||
+      die_usage "completed smoke must be recovered with --recover-pending smoke"
     if ! git -C "$main_root" reset --hard "$pre_merge_sha" >/dev/null; then
       printf 'status=recovery-required reason=reset-failed pre=%s merged=%s\n' \
         "$pre_merge_sha" "$merged_sha" >&2
@@ -317,11 +350,16 @@ if [[ -n "$failed_index" ]]; then
   exit 30
 fi
 
+completion_tmp=$completion_file.tmp-$$
+printf '%s\n%s\n%s\n%s\n' \
+  "$pre_merge_sha" "$merged_sha" "$main_root" "$feature_root" >"$completion_tmp"
+mv -- "$completion_tmp" "$completion_file"
+
 if [[ -f "$local_plan" ]] && ! rm -- "$local_plan"; then
   printf 'status=recovery-required reason=local-plan-cleanup-failed plan=%q\n' \
     "$local_plan" >&2
   exit 31
 fi
 rm -f "$pending_file"
-printf 'status=integrated pre=%s head=%s smoke_count=%s\n' \
-  "$pre_merge_sha" "$merged_sha" "${#smoke_commands[@]}"
+printf 'status=integrated pre=%s head=%s smoke_count=%s marker=%q\n' \
+  "$pre_merge_sha" "$merged_sha" "${#smoke_commands[@]}" "$completion_file"

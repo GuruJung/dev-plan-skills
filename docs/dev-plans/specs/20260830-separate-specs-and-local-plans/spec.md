@@ -49,6 +49,9 @@ current_spec_path: docs/dev-plans/current-spec.md
 - 신규 계획의 durable intent와 execution detail이 독립된 artifact로 저장된다.
 - Git에는 feature spec과 필요한 current-spec 변경만 남고 local plan은 들어가지 않는다.
 - current spec은 현재 상태만 설명하며 coverage와 결정 근거를 명확히 표시한다.
-- spec 승격 실패나 integration 실패는 local plan을 보존하고 성공한 integration만 삭제한다.
+- spec 승격 실패나 integration 실패는 local plan을 보존하고, 성공한 smoke의 durable marker가
+  기록된 integration만 삭제한다. state 갱신 전 중단은 marker에서 복구할 수 있다.
+- Git metadata의 모든 조상 경로에서 symlink를 거부해 repository 밖의 plan이나 spec을 읽거나
+  삭제하지 않는다.
 - 신규 schema와 필수 artifact가 유효하지 않으면 다른 경로를 추정하지 않고 무변경 중단한다.
 - 기존 `docs/superpowers/plans/**` 파일은 수정되지 않는다.

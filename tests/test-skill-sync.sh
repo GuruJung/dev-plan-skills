@@ -195,9 +195,13 @@ assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'scripts/promote-spec.sh'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  'smoke가 모두 통과한 뒤 local plan을 삭제'
+  'smoke가 모두 통과하면 `integration.complete` marker를 원자적으로 기록한 뒤 local plan'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'returns `integrated` only after every smoke passes, local plan is removed'
+  'atomically records `integration.complete`, removes local plan and the pending marker'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  'state를 원자적으로 갱신한 뒤에만 `integration.complete` marker를 제거'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'atomically update state and only then remove `integration.complete`'
 
 # The canonical installation namespace is renamed without legacy aliases.
 assert_contains "$repo_root/scripts/global-skills-common.sh" \

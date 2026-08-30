@@ -134,6 +134,21 @@ expect_failure 'promoter accepted an unrelated worktree change' \
 [[ -f "$temporary_dir/spec.md" && -f "$temporary_dir/plan.md" ]] ||
   fail 'unrelated-change failure removed metadata'
 
+make_repo metadata-symlink
+git -C "$case_root" switch -qc "feature/$feature_id"
+metadata_dir=$case_root/.git/dev-plan-workflow
+mkdir -p -- "$metadata_dir/plans"
+outside_metadata=$test_root/promotion-outside-metadata
+mkdir -p -- "$outside_metadata"
+printf 'temporary spec\n' >"$outside_metadata/spec.md"
+printf 'local plan\n' >"$outside_metadata/plan.md"
+ln -s -- "$outside_metadata" "$metadata_dir/plans/$feature_id"
+expect_failure 'promoter followed a feature metadata symlink' \
+  "$promoter" --metadata-dir "$metadata_dir" \
+  --feature-worktree "$case_root" --feature-id "$feature_id"
+[[ -f "$outside_metadata/spec.md" && -f "$outside_metadata/plan.md" ]] ||
+  fail 'metadata symlink failure removed external artifacts'
+
 make_integration_case() {
   local name=$1
   make_repo "$name"
@@ -166,6 +181,18 @@ $integrator \
   fail 'successful integration did not advance main'
 assert_absent "$temporary_dir/plan.md"
 assert_absent "$metadata_dir/integration.pending"
+[[ -f "$temporary_dir/integration.complete" && ! -L "$temporary_dir/integration.complete" ]] ||
+  fail 'successful integration did not retain a plain completion marker'
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --main-branch main \
+  --smoke 'test -f README.md' >/dev/null
+rm -- "$temporary_dir/integration.complete"
 
 # Smoke rollback restores main and preserves the local plan.
 make_integration_case integration-rollback
@@ -186,5 +213,25 @@ set -e
   fail 'smoke rollback did not restore main'
 [[ -f "$temporary_dir/plan.md" ]] || fail 'smoke rollback removed the local plan'
 assert_absent "$metadata_dir/integration.pending"
+assert_absent "$temporary_dir/integration.complete"
+
+# A symlinked feature metadata directory cannot redirect local-plan access outside Git metadata.
+make_integration_case integration-metadata-symlink
+outside_metadata=$test_root/integration-outside-metadata
+mv -- "$temporary_dir" "$outside_metadata"
+ln -s -- "$outside_metadata" "$temporary_dir"
+expect_failure 'integrator followed a feature metadata symlink' \
+  "$integrator" \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --main-branch main \
+  --smoke 'test -f README.md'
+[[ -f "$outside_metadata/plan.md" ]] || fail 'symlink failure removed the external plan'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
+  fail 'symlink failure changed main'
 
 printf 'All dev plan workflow tests passed.\n'

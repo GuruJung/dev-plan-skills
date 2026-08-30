@@ -19,7 +19,7 @@ Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation. Reso
 4. the only nonterminal feature;
 5. otherwise, show candidates and ask the user to choose.
 
-Reject an unknown ID. Require `state.json` to have `schema_version` exactly `2` and `feature_type` equal to `standard` or `goal-loop`. For a nonterminal feature, require plain local `plan.md` and either temporary `spec.md` or a committed tracked spec at the state's `spec_path`. When required new artifacts are missing or invalid, do not infer content or search other paths; stop without changes.
+Reject an unknown ID. Require `state.json` to have `schema_version` exactly `2` and `feature_type` equal to `standard` or `goal-loop`. For a nonterminal feature, require plain local `plan.md`, except that a plain `integration.complete` marker permits a missing plan for integration recovery below. Require either temporary `spec.md` or a committed tracked spec at the state's `spec_path`. When required new artifacts are missing or invalid, do not infer content or search other paths; stop without changes.
 
 ## Prepare a planned feature
 
@@ -49,7 +49,7 @@ scripts/promote-spec.sh \
   --feature-id <id>
 ```
 
-The helper atomically copies temporary `spec.md` to the contract path `docs/dev-plans/specs/<id>/spec.md`, stages only that path, and creates commit `docs(spec): add <id>`. After verifying the commit and clean worktree, it removes only temporary spec and retains local `plan.md`. It preserves all artifacts and stops for another change, a conflicting destination, a symlink, a missing local plan, or commit failure.
+The helper verifies that every path component through Git common metadata and `plans/<id>` is a plain directory. It atomically copies temporary `spec.md` to the contract path `docs/dev-plans/specs/<id>/spec.md`, stages only that path, and creates commit `docs(spec): add <id>`. After verifying the commit and clean worktree, it removes only temporary spec and retains local `plan.md`. It preserves all artifacts and stops for another change, a conflicting destination, a symlink, a missing local plan, or commit failure.
 
 On re-entry, when only tracked spec remains, require it to be committed at HEAD and use it as authoritative intent. When temporary and tracked specs both exist, use the helper to verify equality and finish promotion. Stop when they differ. Begin implementation and checkpoints from the spec commit.
 
@@ -136,8 +136,8 @@ scripts/integrate-feature.sh \
   --smoke '<command>' [--smoke '<command>' ...]
 ```
 
-The helper requires a plain local plan before integration. It returns `integrated` only after every smoke passes, local plan is removed, and the pending marker is removed. Smoke rollback and recovery-required outcomes preserve local plan. Use the same arguments with `--recover-pending smoke` or `--recover-pending rollback` for interrupted integration.
+The helper verifies that every path component through the feature metadata directory and local plan is plain. After every smoke passes, it atomically records `integration.complete`, removes local plan and the pending marker, and returns `integrated`. The marker records validated main and feature HEADs and worktrees so the same call can safely reproduce `integrated` after interruption between helper return and state update. Smoke rollback and recovery-required before marker creation preserve local plan. Use the same arguments with `--recover-pending smoke` or `--recover-pending rollback` for interrupted integration.
 
-On `integrated`, update state and finish. Return to revalidation for `stale-main` or `not-fast-forward`; set `needs-replan` for `smoke-rolled-back`; block further integration until main recovery for `recovery-required`. Terminal state may omit local plan.
+On `integrated`, atomically update state and only then remove `integration.complete`. On re-entry with a marker, reproduce the result with the same helper call when Git and marker agree. Return to revalidation for `stale-main` or `not-fast-forward`; set `needs-replan` for `smoke-rolled-back`; block further integration until main recovery for `recovery-required`. Terminal state may omit local plan.
 
 Do not push or delete the feature branch or worktree automatically. Write shared state atomically.

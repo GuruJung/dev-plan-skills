@@ -26,7 +26,8 @@ constraint outside that coverage.
 - `$save-dev-plan` atomically saves standalone `spec.md`, `plan.md`, and schema-v2 `state.json` in
   Git common metadata without modifying a worktree or branch.
 - `$implement-dev-plan` promotes only the feature spec, applies its `Current Spec Impact`, and uses
-  the local plan solely as an execution artifact.
+  the local plan solely as an execution artifact. Successful smoke writes a durable completion
+  marker before deleting the plan; state becomes terminal before that marker is cleared.
 - A feature whose current intent is unchanged still records the invariants and acceptance criteria
   in its feature spec, but does not edit this file merely for provenance or a timestamp.
 

@@ -19,7 +19,7 @@ description: 저장된 신규 형식의 지속 기능 명세와 로컬 구현 �
 4. terminal 상태가 아닌 유일한 기능
 5. 그 외에는 후보를 보여 주고 사용자에게 선택 요청
 
-알 수 없는 ID는 거부하세요. `state.json`에서 `schema_version`이 정확히 `2`이고 `feature_type`이 `standard` 또는 `goal-loop`인지 요구하세요. terminal 상태가 아니면 plain local `plan.md`를 요구하고, 임시 `spec.md` 또는 state의 `spec_path`에 commit된 tracked spec 중 하나를 요구하세요. 필수 신규 산출물이 없거나 유효하지 않으면 내용을 추정하거나 다른 경로를 찾지 말고 무변경 중단하세요.
+알 수 없는 ID는 거부하세요. `state.json`에서 `schema_version`이 정확히 `2`이고 `feature_type`이 `standard` 또는 `goal-loop`인지 요구하세요. terminal 상태가 아니면 plain local `plan.md`를 요구하되, plain `integration.complete` marker가 있으면 아래 통합 복구를 위해 plan 부재를 허용하세요. 임시 `spec.md` 또는 state의 `spec_path`에 commit된 tracked spec 중 하나를 요구하세요. 필수 신규 산출물이 없거나 유효하지 않으면 내용을 추정하거나 다른 경로를 찾지 말고 무변경 중단하세요.
 
 ## 계획된 기능 준비
 
@@ -49,7 +49,7 @@ scripts/promote-spec.sh \
   --feature-id <id>
 ```
 
-helper는 임시 `spec.md`를 state의 `docs/dev-plans/specs/<id>/spec.md` 계약 경로로 원자적으로 복사하고, 그 경로만 stage해 `docs(spec): add <id>` commit을 만듭니다. commit과 clean worktree를 검증한 뒤 임시 spec만 제거하고 local `plan.md`는 보존합니다. 다른 change, 충돌 destination, symlink, 누락된 local plan 또는 commit 실패에는 어느 산출물도 덮어쓰거나 삭제하지 않습니다.
+helper는 Git 공용 metadata와 `plans/<id>`까지 모든 경로 구성요소가 plain directory인지 검증합니다. 임시 `spec.md`를 state의 `docs/dev-plans/specs/<id>/spec.md` 계약 경로로 원자적으로 복사하고, 그 경로만 stage해 `docs(spec): add <id>` commit을 만듭니다. commit과 clean worktree를 검증한 뒤 임시 spec만 제거하고 local `plan.md`는 보존합니다. 다른 change, 충돌 destination, symlink, 누락된 local plan 또는 commit 실패에는 어느 산출물도 덮어쓰거나 삭제하지 않습니다.
 
 재진입 시 tracked spec만 남아 있으면 HEAD에 commit됐는지 확인해 authoritative intent로 사용하세요. 임시·tracked spec이 모두 있으면 helper로 동일성을 확인해 승격을 끝내고, 다르면 중단하세요. 구현과 checkpoint는 spec commit에서 시작합니다.
 
@@ -136,8 +136,8 @@ scripts/integrate-feature.sh \
   --smoke '<command>' [--smoke '<command>' ...]
 ```
 
-helper는 통합 전 local plan이 plain file인지 확인합니다. smoke가 모두 통과한 뒤 local plan을 삭제하고 pending marker를 제거한 경우에만 `integrated`를 반환합니다. smoke rollback과 recovery-required에는 local plan을 보존합니다. 중단된 integration은 같은 인자와 `--recover-pending smoke` 또는 `--recover-pending rollback`을 사용하세요.
+helper는 Git 공용 metadata부터 feature metadata directory까지 모든 경로 구성요소와 local plan이 plain인지 확인합니다. smoke가 모두 통과하면 `integration.complete` marker를 원자적으로 기록한 뒤 local plan과 pending marker를 제거하고 `integrated`를 반환합니다. marker는 validated main·feature HEAD와 worktree를 담아 helper 반환 뒤 state 갱신 전 중단된 경우 같은 인자로 안전하게 `integrated`를 재현합니다. smoke rollback과 marker 작성 전 recovery-required에는 local plan을 보존합니다. 중단된 integration은 같은 인자와 `--recover-pending smoke` 또는 `--recover-pending rollback`을 사용하세요.
 
-`integrated`이면 state를 갱신하고 종료하세요. `stale-main` 또는 `not-fast-forward`면 재검증으로 돌아가고, `smoke-rolled-back`이면 `needs-replan`, `recovery-required`이면 main 복구 전 추가 통합 중단으로 처리하세요. terminal 상태에서는 local plan이 없어도 됩니다.
+`integrated`이면 state를 원자적으로 갱신한 뒤에만 `integration.complete` marker를 제거하고 종료하세요. marker가 남은 재진입은 Git과 marker가 일치할 때 같은 helper call로 결과를 복구하세요. `stale-main` 또는 `not-fast-forward`면 재검증으로 돌아가고, `smoke-rolled-back`이면 `needs-replan`, `recovery-required`이면 main 복구 전 추가 통합 중단으로 처리하세요. terminal 상태에서는 local plan이 없어도 됩니다.
 
 자동으로 push하거나 feature branch·worktree를 삭제하지 마세요. 공유 state는 원자적으로 갱신하세요.

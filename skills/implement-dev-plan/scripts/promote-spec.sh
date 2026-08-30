@@ -77,6 +77,11 @@ command -v git >/dev/null || fail 'git is required'
 
 feature_root=$(git -C "$feature_worktree" rev-parse --path-format=absolute --show-toplevel 2>/dev/null) ||
   fail "not a Git worktree: $feature_worktree"
+common_dir=$(git -C "$feature_root" rev-parse --path-format=absolute --git-common-dir)
+metadata_root=$(CDPATH= cd -- "$metadata_dir" 2>/dev/null && pwd -P) ||
+  fail "cannot resolve metadata directory: $metadata_dir"
+[[ "$metadata_root" == "$common_dir/dev-plan-workflow" ]] ||
+  fail "metadata directory does not belong to the feature repository: $metadata_dir"
 branch=$(git -C "$feature_root" symbolic-ref --quiet --short HEAD 2>/dev/null) ||
   fail 'feature worktree must have a branch checked out'
 [[ "$branch" == "feature/$feature_id" ]] ||
@@ -87,6 +92,11 @@ temporary_dir=$metadata_dir/plans/$feature_id
 temporary_spec=$temporary_dir/spec.md
 local_plan=$temporary_dir/plan.md
 tracked_spec=$feature_root/$relative_spec
+
+[[ -d "$metadata_dir/plans" && ! -L "$metadata_dir/plans" ]] ||
+  fail "plans directory is not a plain directory: $metadata_dir/plans"
+[[ -d "$temporary_dir" && ! -L "$temporary_dir" ]] ||
+  fail "feature metadata directory is not a plain directory: $temporary_dir"
 
 [[ -f "$local_plan" && ! -L "$local_plan" ]] ||
   fail "local plan is not a plain file: $local_plan"
