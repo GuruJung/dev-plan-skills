@@ -8,10 +8,16 @@
 선택한 같은 대화의 save-only handoff로 활성화한다. 저장 후 구현은 시작하지 않으며
 `$implement-dev-plan <id>`를 사용자가 별도로 호출한다.
 
-계획은 먼저 `<git-common-dir>/dev-plan-workflow/plans/<id>/plan.md`에 임시 저장된다.
-구현을 시작하면 feature worktree의 `docs/superpowers/plans/<id>/plan.md`로 승격되어 계획
-전용 commit에 포함되고, 기능 통합과 함께 main에 들어간다. 실행 상태, 평가, 리뷰와 통합
-복구 자료는 계속 `<git-common-dir>/dev-plan-workflow/`에 둔다.
+확정 결과는 `<git-common-dir>/dev-plan-workflow/plans/<id>/`의 `spec.md`, `plan.md`,
+`state.json`에 원자적으로 임시 저장된다. 구현을 시작하면 지속 의도인 feature spec만
+`docs/dev-plans/specs/<id>/spec.md`로 승격되어 spec 전용 commit에 포함된다. 구현 세부인
+local plan은 Git metadata에 남아 실행과 재개에 사용되고 통합 smoke 성공 뒤 삭제된다.
+
+`docs/dev-plans/current-spec.md`는 새 workflow로 추가되거나 바뀐 현재 의도를 정규화해
+보관한다. 과거 spec의 합본이나 연대기가 아니며, 순수 refactor처럼 현재 의도가 변하지
+않으면 feature spec만 추가하고 current spec은 수정하지 않는다. 코드와 테스트는 실제
+동작의 source of truth이고, current spec은 명시된 coverage 안에서 현재 intent의 기준이다.
+기존 `docs/superpowers/plans/` 자료는 변경하거나 새 형식으로 옮기지 않는다.
 
 ## 스킬 작성 언어와 동기화
 

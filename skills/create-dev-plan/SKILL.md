@@ -1,90 +1,64 @@
 ---
 name: create-dev-plan
-description: Interview the user and produce a decision-complete standard or native-goal-loop development plan with a save-only implementation handoff. Use only when the user explicitly invokes "$create-dev-plan" in Plan mode.
+description: Interview the user and produce a standard or native-goal-loop development plan that separates a durable feature spec from a local implementation plan, with a save-only handoff. Use only when the user explicitly invokes "$create-dev-plan" in Plan mode.
 ---
 
 # Create Dev Plan
 
 Plan only. Do not write files, create branches, implement, or run mutating commands.
 
-Use the user's current conversation language for questions, status, and prose artifacts unless the
-user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and
-machine-readable schema keys exactly.
+Use the user's current conversation language for questions, status, and prose artifacts unless the user explicitly requests another language. Preserve commands, identifiers, paths, enum values, and YAML or JSON keys exactly.
 
 ## Require Plan mode
 
-If Plan mode is not active, ask the user to switch to Plan mode and invoke `$create-dev-plan` again.
-Stop without changing repository state.
+If Plan mode is not active, ask the user to switch to Plan mode and invoke `$create-dev-plan` again. Stop without changing repository state.
 
 ## Ground the interview
 
-Inspect the repository before asking questions. Read applicable instructions, relevant code,
-configuration, tests, and existing conventions. Resolve discoverable facts directly.
+Inspect the repository before asking questions. Read applicable instructions, relevant code, configuration, tests, and existing conventions. Resolve discoverable facts directly.
 
-Also inspect the localized user-decision sections of relevant prior plans under
-`docs/superpowers/plans/*/plan.md`. Preserve repository-wide decisions when they do not conflict
-with the current request. Treat feature-specific decisions as context only. Do not silently apply
-a prior decision to a different scope or let it override a conflicting current request.
+When `docs/dev-plans/current-spec.md` exists, read it first for current product intent. Read only `docs/dev-plans/specs/*/spec.md` documents that are relevant to the task and linked from the current spec when decision rationale is needed. Do not infer intent outside current-spec coverage from code; ask the user when that intent is material.
 
-After this exploration, classify the feature type from the repository evidence and the user's
-request:
+After exploration, classify the feature type:
 
 - `standard`: a bounded implementation with explicit acceptance and eval criteria;
-- `goal-loop`: repeated implementation or tuning against a measurable target;
+- `goal-loop`: repeated implementation or tuning against a measurable target.
 
-When the type is clear, select `standard` or `goal-loop` directly, briefly tell the user which type
-you selected, and proceed immediately with that interview. Do not ask a feature-type question.
+When the type is clear, select it directly, briefly report the selection, and continue with that interview. Only when it remains unclear after exploration, require a choice between `standard` and `goal-loop`. Localize displayed labels while preserving these internal values and use structured user input when available. Do not offer another type.
 
-Only when the type remains unclear after exploration, require the user to choose between `standard`
-and `goal-loop`. Localize the displayed labels to the current conversation language while
-preserving these internal values. Use the structured user-input tool when available.
+## Separate durable intent from execution information
 
-Do not offer any choice other than `standard` or `goal-loop`.
+Classify each requirement and decision using these rules:
+
+- Put outcomes, observable behavior, public contracts, exclusions, constraints, failure and recovery expectations, decision rationale, and semantic acceptance criteria that must survive a complete implementation replacement in `Tracked Feature Spec`.
+- Put code-derived files, symbols, internal flow, implementation order, commands, checkpoints, one-time budgets, and operational procedure in `Local Implementation Plan`.
+- Do not put short-lived execution choices in the tracked spec or present implementation details as current product intent.
 
 ## Interview a standard feature
 
-Keep asking material questions until the plan fixes:
+Keep asking material questions until the following are fixed:
 
 - intended outcome, audience, and definition of done;
 - in-scope and excluded behavior;
 - compatibility, security, performance, and operational constraints;
-- implementation approach and material interfaces or data flows;
 - failure modes and recovery expectations;
-- executable eval commands and their success conditions;
+- implementation approach and material interfaces or data flows;
+- executable eval commands and success conditions;
 - independent-review acceptance;
 - automatic smoke threshold, defaulting to 60 seconds;
-- rollout, migration, or monitoring only when the feature needs them.
+- rollout, migration, or monitoring only when needed.
 
-Treat every eval as an automatic smoke candidate. Do not ask for or record a per-eval smoke
-selection. Require at least one eval that is verified or reasonably expected to run within the
-threshold.
+Treat every eval as an automatic smoke candidate. Do not ask for or record per-eval selection. Require at least one eval verified or reasonably expected to finish within the threshold.
 
 ## Interview a goal-loop feature
 
-Fix the complete experiment contract:
+In the durable feature spec, fix the outcome, metric and unit, optimization direction, numeric target and tolerance, correctness, performance, and quality guardrails, allowed and forbidden changes, and compatibility constraints.
 
-- outcome;
-- metric, unit, and optimization direction;
-- baseline value and reproducible baseline command;
-- numeric target and tolerance;
-- measurement command and success interpretation;
-- correctness, performance, and quality guardrails;
-- allowed code, configuration, parameter, and search space;
-- forbidden changes and compatibility constraints;
-- at least one execution budget: maximum iterations, wall-clock duration, or token budget;
-- best-so-far comparison and checkpoint rule;
-- tie-breaker when primary metrics are equal;
-- conditions for reporting, pausing, or re-planning;
-- full final eval and automatic post-merge smoke contract.
+In the local plan, fix the reproducible baseline and measurement commands, success interpretation, at least one of maximum iterations, wall-clock duration, or token budget, best-so-far comparison and checkpoint rules, tie-breaker, reporting, stopping, and re-planning conditions, full final eval, and automatic post-merge smoke contract.
 
-Inspect likely eval cost, then recommend concrete budget options. Do not choose a default when the
-user is silent. Require explicit approval of at least one numeric budget. Include a native token
-budget only when the user explicitly approves a token count.
+Inspect likely eval cost and recommend concrete budget choices. Do not choose a default when the user is silent. Require explicit approval of at least one numeric budget and include a native token budget only when the user approves a token count.
 
-Construct a native goal objective of at most 4,000 characters. Make it cover only finding and
-verifying an implementation that reaches the target while preserving guardrails. Include outcome,
-metric target, constraints, verification, and the future saved plan path. Put detailed experiment
-instructions in the plan rather than overloading the objective.
+Construct a native goal objective of at most 4,000 characters. Include outcome, metric target, constraints, verification, and the future local plan path. Keep detailed experiment instructions in the plan.
 
 Use this checkpoint policy:
 
@@ -94,17 +68,19 @@ Use this checkpoint policy:
 - restore failed or worse agent-owned experiments to the best checkpoint;
 - stop rather than discard unexpected user or concurrent changes.
 
-The native goal ends when the target and guardrails are verified. Independent review and
-integration remain later `$implement-dev-plan` stages, outside native-goal completion.
+The native goal ends when target and guardrails are verified. Independent review and integration remain later `$implement-dev-plan` stages.
+
+## Fix current-spec impact
+
+In `Tracked Feature Spec`, make `Current Spec Impact` state exactly which current intentions to add, replace, or remove in `docs/dev-plans/current-spec.md`. When no current spec exists, include creation of the initial file with coverage limited to decisions made under the new system and the current intent introduced by this feature.
+
+For a pure refactor or another change that preserves current intent, write `No change` and state the invariants to preserve. Do not plan a provenance-only or timestamp-only current-spec edit.
 
 ## Finalize the plan
 
-Generate `YYYYMMDD-<slug>` from the feature title. Inspect
-`<git-common-dir>/dev-plan-workflow/plans/` and
-`docs/superpowers/plans/<id>/plan.md` in the main worktree read-only. Append `-2`, `-3`, and so on
-for a collision.
+Generate `YYYYMMDD-<slug>` from the feature title. Inspect `<git-common-dir>/dev-plan-workflow/plans/`, `docs/dev-plans/specs/<id>/spec.md` in the main worktree, branches, and registered worktrees read-only. Append `-2`, `-3`, and so on for a collision.
 
-Allow only `standard` or `goal-loop` in the final frontmatter:
+Allow only `standard` or `goal-loop` in final frontmatter:
 
 ```yaml
 ---
@@ -112,7 +88,9 @@ feature_id: <id>
 title: <title>
 feature_type: <standard-or-goal-loop>
 base_branch: main
-plan_path: docs/superpowers/plans/<id>/plan.md
+spec_path: docs/dev-plans/specs/<id>/spec.md
+current_spec_path: docs/dev-plans/current-spec.md
+plan_path: <git-common-dir>/dev-plan-workflow/plans/<id>/plan.md
 smoke_threshold_seconds: 60
 execution_handoff:
   skill: save-dev-plan
@@ -122,21 +100,15 @@ execution_handoff:
 ---
 ```
 
-For a goal loop, include a `Goal Contract` section containing every approved experiment field,
-including the native objective and budgets.
+Include these two top-level sections:
 
-Include a localized `User Decisions` section in every plan. Record the decision topic, the user's
-selection, any reason or tradeoff the user stated, and its scope. When the user gave no reason,
-say so rather than inventing one. Do not record repository facts or agent-selected defaults that
-the user did not approve as user decisions.
+1. `Tracked Feature Spec`: summary, requirements and exclusions, `Current Spec Impact`, user decisions, and acceptance criteria.
+2. `Local Implementation Plan`: implementation approach, work sequence, eval contract, and execution decisions.
+
+Include a localized `User Decisions` section in every tracked spec. Record the decision topic, the user's selection, any stated reason or tradeoff, and its scope. When no reason was given, say so instead of inventing one. Do not record repository facts or agent defaults as user decisions.
+
+For a goal loop, put durable target and guardrails in the tracked spec and the complete `Goal Contract`, including native objective and budgets, in the local plan.
 
 Produce the decision-complete plan in the required Plan-mode format.
 
-End with a localized blockquote explaining that the host's "Implement this plan" action switches
-to Default mode and delegates only temporary persistence under
-`<git-common-dir>/dev-plan-workflow/` to `$save-dev-plan`. This selection does not authorize
-implementation, branch or worktree creation, or `$implement-dev-plan`. The plan is promoted and
-committed as `docs/superpowers/plans/<id>/plan.md` in the feature worktree only after the user
-explicitly invokes `$implement-dev-plan <id>`. When the automatic handoff does not start or the
-host has no native implementation action, tell the user to switch to Default mode and invoke
-`$save-dev-plan` explicitly. Save nothing when the user keeps planning.
+End with a localized blockquote explaining that the host's "Implement this plan" action switches to Default mode and delegates only temporary Git-common-metadata persistence to `$save-dev-plan`. It does not authorize implementation, branch or worktree creation, or `$implement-dev-plan`. After the user explicitly invokes `$implement-dev-plan <id>`, only the feature spec is promoted into Git while the local plan remains in metadata until successful integration. When automatic handoff does not start, tell the user to invoke `$save-dev-plan` explicitly in Default mode. Save nothing while the user continues planning.

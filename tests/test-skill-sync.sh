@@ -87,13 +87,13 @@ assert_absent "$repo_root/README.md" '한글 원본'
 
 # Planning infers a clear feature type and only asks between the two supported types when unclear.
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  '유형이 명확하면 `standard` 또는 `goal-loop`를 직접 선택하고'
+  '유형이 명확하면 직접 선택하고 짧게 알린 뒤 해당 인터뷰로 진행하세요.'
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  '조사 후에도 유형이 불명확할 때만 `standard`와 `goal-loop` 중 하나를 반드시 선택하게 하세요.'
+  '조사 후에도 불명확할 때만 `standard`와 `goal-loop` 중 하나를 선택하게 하세요.'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'When the type is clear, select `standard` or `goal-loop` directly'
+  'When the type is clear, select it directly'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'Only when the type remains unclear after exploration, require the user to choose between `standard`'
+  'Only when it remains unclear after exploration, require a choice between `standard` and `goal-loop`.'
 assert_absent "$repo_root/skills-ko/create-dev-plan" '`other`'
 assert_absent "$repo_root/skills/create-dev-plan" '`other`'
 
@@ -103,7 +103,7 @@ assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
   'smoke_threshold_seconds: 60'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '계획의 threshold, 기본 60초를 사용하세요.'
+  '계획 threshold, 기본 60초를 사용해'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
   'automatic smoke threshold, defaulting to 60 seconds;'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
@@ -111,9 +111,9 @@ assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'plan threshold, default 60 seconds.'
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  '별도의 eval별 smoke 선택을 묻거나 기록하지 마세요.'
+  'eval별 선택을 묻거나 기록하지 마세요.'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'Ignore legacy per-eval smoke-selection fields'
+  'Include every eval within the threshold as automatic smoke.'
 assert_absent "$repo_root/skills" 'smoke_threshold_seconds: 300'
 assert_absent "$repo_root/skills" 'default 300 seconds'
 assert_absent "$repo_root/skills" 'defaulting to 300 seconds'
@@ -125,13 +125,13 @@ assert_absent "$repo_root/skills-ko" '기본 300초'
 assert_absent "$repo_root/skills-ko/implement-dev-plan" '$review-agent'
 assert_absent "$repo_root/skills/implement-dev-plan" '$review-agent'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '첫 문제를 찾은 뒤에도 전체 diff를 끝까지 확인하세요.'
+  '전체 diff와 모든 changed path 주변 코드'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '검토 대상 변경으로 인해 새로 발생했습니다.'
+  '이번 변경이 만들었고'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'continue through the whole diff after finding'
+  'inspect the complete diff from merge-base through feature HEAD'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'the reviewed change introduced it;'
+  'was introduced by this change'
 
 # Plan handoff saves only; running remains an explicit and separate action.
 assert_path_absent "$repo_root/skills-ko/plan-run-feature"
@@ -149,15 +149,15 @@ assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
   '명시 호출과 handoff 호출 모두 저장 전용입니다.'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
-  'Do not invoke `$implement-dev-plan` or start branch creation'
+  'Never treat saving as implementation approval or invoke `$implement-dev-plan` directly.'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
   '`$implement-dev-plan [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요.'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation.'
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
-  'frontmatter, `plan_path`, goal objective의 저장 계획 경로를 포함해 feature ID를 나타내는'
+  '모든 feature-ID-bearing 필드와 경로를 일관되게 갱신합니다.'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
-  'every feature-ID-bearing field and path, including'
+  'update every feature-ID-bearing field and path consistently.'
 assert_contains "$repo_root/skills/save-dev-plan/agents/openai.yaml" \
   'allow_implicit_invocation: true'
 for skill in create-dev-plan implement-dev-plan; do
@@ -171,27 +171,33 @@ assert_absent "$repo_root/skills/save-dev-plan" '$plan-run-feature'
 assert_absent "$repo_root/skills-ko/implement-dev-plan" '$plan-run-feature'
 assert_absent "$repo_root/skills/implement-dev-plan" '$plan-run-feature'
 
-# Plans are saved temporarily, promoted into the feature branch, and retain user decisions.
+# Durable specs are promoted while local plans remain in Git metadata.
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  'plan_path: docs/superpowers/plans/<id>/plan.md'
+  'spec_path: docs/dev-plans/specs/<id>/spec.md'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'plan_path: docs/superpowers/plans/<id>/plan.md'
+  'current_spec_path: docs/dev-plans/current-spec.md'
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  '`사용자 결정 사항` 또는 `User Decisions` 섹션을 포함하세요.'
+  '`Tracked Feature Spec`: 요약, 요구사항과 비범위'
+assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
+  '`Local Implementation Plan`: 구현 접근법, 작업 순서'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'Include a localized `User Decisions` section in every plan.'
+  'Include a localized `User Decisions` section in every tracked spec.'
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
-  '<git-common-dir>/dev-plan-workflow/plans/<id>/'
+  '"schema_version": 2'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
-  '<git-common-dir>/dev-plan-workflow/plans/<id>/'
+  'atomically rename the staging directory to the destination'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '`docs(plan): add <id>` commit'
+  '`docs(spec): add <id>` commit'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'creates commit `docs(plan): add <id>`'
+  'creates commit `docs(spec): add <id>`'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  'scripts/promote-plan.sh'
+  'scripts/promote-spec.sh'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'scripts/promote-plan.sh'
+  'scripts/promote-spec.sh'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  'smoke가 모두 통과한 뒤 local plan을 삭제'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'returns `integrated` only after every smoke passes, local plan is removed'
 
 # The canonical installation namespace is renamed without legacy aliases.
 assert_contains "$repo_root/scripts/global-skills-common.sh" \
@@ -204,8 +210,8 @@ assert_contains "$repo_root/scripts/global-skills-common.sh" \
   'legacy FEATURE_WORKFLOW_* variables are unsupported; use DEV_PLAN_WORKFLOW_*'
 assert_absent "$repo_root/scripts" '.feature-workflow-'
 
-[[ -x "$repo_root/skills/implement-dev-plan/scripts/promote-plan.sh" ]] ||
-  fail 'plan promotion helper is not executable'
+[[ -x "$repo_root/skills/implement-dev-plan/scripts/promote-spec.sh" ]] ||
+  fail 'spec promotion helper is not executable'
 
 # A valid repository can record and verify a complete synchronization state.
 make_case valid

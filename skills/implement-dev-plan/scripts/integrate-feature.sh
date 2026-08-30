@@ -5,6 +5,8 @@ usage() {
   cat <<'EOF'
 Usage:
   integrate-feature.sh \
+    --metadata-dir PATH \
+    --feature-id ID \
     --main-worktree PATH \
     --feature-worktree PATH \
     --expected-main SHA \
@@ -32,6 +34,8 @@ die_usage() {
   exit 64
 }
 
+metadata_dir=
+feature_id=
 main_worktree=
 feature_worktree=
 expected_main=
@@ -42,6 +46,16 @@ declare -a smoke_commands=()
 
 while (($#)); do
   case "$1" in
+    --metadata-dir)
+      (($# >= 2)) || die_usage "missing value for --metadata-dir"
+      metadata_dir=$2
+      shift 2
+      ;;
+    --feature-id)
+      (($# >= 2)) || die_usage "missing value for --feature-id"
+      feature_id=$2
+      shift 2
+      ;;
     --main-worktree)
       (($# >= 2)) || die_usage "missing value for --main-worktree"
       main_worktree=$2
@@ -87,6 +101,11 @@ while (($#)); do
   esac
 done
 
+[[ -n "$metadata_dir" ]] || die_usage "--metadata-dir is required"
+[[ "$feature_id" =~ ^[0-9]{8}-[a-z0-9][a-z0-9-]*$ ]] ||
+  die_usage "--feature-id is invalid"
+[[ -d "$metadata_dir" && ! -L "$metadata_dir" ]] ||
+  die_usage "--metadata-dir must be a plain directory"
 [[ -n "$main_worktree" ]] || die_usage "--main-worktree is required"
 [[ -n "$feature_worktree" ]] || die_usage "--feature-worktree is required"
 [[ -n "$expected_main" ]] || die_usage "--expected-main is required"
@@ -102,6 +121,14 @@ fi
 
 command -v git >/dev/null || die_usage "git is required"
 command -v flock >/dev/null || die_usage "flock is required"
+
+local_plan=$metadata_dir/plans/$feature_id/plan.md
+if [[ -L "$local_plan" || -e "$local_plan" && ! -f "$local_plan" ]]; then
+  die_usage "local plan must be a plain file"
+fi
+if [[ ! -f "$local_plan" && "$recover_pending" != smoke ]]; then
+  die_usage "local plan must be a plain file"
+fi
 
 resolve_root() {
   git -C "$1" rev-parse --path-format=absolute --show-toplevel 2>/dev/null
@@ -130,6 +157,16 @@ current_main_branch=$(git -C "$main_root" symbolic-ref --quiet --short HEAD 2>/d
 
 common_dir=$(git -C "$main_root" rev-parse --path-format=absolute --git-common-dir)
 workflow_dir=$common_dir/dev-plan-workflow
+metadata_root=$(CDPATH= cd -- "$metadata_dir" 2>/dev/null && pwd -P) || {
+  printf 'status=invalid-or-dirty-worktree reason=invalid-metadata-dir\n' >&2
+  exit 22
+}
+[[ "$metadata_root" == "$workflow_dir" ]] || {
+  printf 'status=invalid-or-dirty-worktree reason=metadata-dir-mismatch expected=%q actual=%q\n' \
+    "$workflow_dir" "$metadata_root" >&2
+  exit 22
+}
+local_plan=$workflow_dir/plans/$feature_id/plan.md
 mkdir -p "$workflow_dir"
 lock_file=$workflow_dir/integration.lock
 pending_file=$workflow_dir/integration.pending
@@ -280,6 +317,11 @@ if [[ -n "$failed_index" ]]; then
   exit 30
 fi
 
+if [[ -f "$local_plan" ]] && ! rm -- "$local_plan"; then
+  printf 'status=recovery-required reason=local-plan-cleanup-failed plan=%q\n' \
+    "$local_plan" >&2
+  exit 31
+fi
 rm -f "$pending_file"
 printf 'status=integrated pre=%s head=%s smoke_count=%s\n' \
   "$pre_merge_sha" "$merged_sha" "${#smoke_commands[@]}"

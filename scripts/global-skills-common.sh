@@ -189,8 +189,8 @@ validate_sources() {
 
   [[ -x "$source_root/implement-dev-plan/scripts/integrate-feature.sh" ]] ||
     fail 'integration helper is not executable'
-  [[ -x "$source_root/implement-dev-plan/scripts/promote-plan.sh" ]] ||
-    fail 'plan promotion helper is not executable'
+  [[ -x "$source_root/implement-dev-plan/scripts/promote-spec.sh" ]] ||
+    fail 'spec promotion helper is not executable'
 }
 
 initialize_paths() {
