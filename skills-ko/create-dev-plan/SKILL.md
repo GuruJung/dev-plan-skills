@@ -74,7 +74,9 @@ native goal은 target과 guardrail이 검증되면 끝납니다. 독립 리뷰�
 
 `Tracked Feature Spec`의 `Current Spec Impact`에 `docs/dev-plans/current-spec.md`에서 추가, 교체 또는 제거할 현재 의도를 정확히 기록하세요. current spec이 없으면 새 체계 이후의 결정만 다룬다는 coverage와 이번 기능의 현재 의도로 최초 파일을 만드는 내용을 포함하세요.
 
-순수 리팩터처럼 현재 의도가 변하지 않으면 `No change`와 보존할 불변조건을 명시하세요. 내용이 달라지지 않는데 provenance나 timestamp만 갱신하도록 계획하지 마세요.
+`Current Spec Impact`가 `add`, `replace`, `remove` 중 하나이면 current spec의 기존 내용을 포함한 전체 서술 언어를 tracked feature spec의 주된 서술 언어와 맞추도록 계획하세요. frontmatter, code block, 명령, 경로, 식별자, enum 값과 YAML/JSON 키는 언어 판별에서 제외하고 번역하지 마세요. 주된 서술 언어가 명확하지 않으면 current spec 언어를 사용자에게 확인하세요. 기존 current intent, coverage와 결정 근거의 의미를 보존하고 일부만 번역한 혼합 언어 문서를 만들지 마세요.
+
+순수 리팩터처럼 현재 의도가 변하지 않으면 `No change`와 보존할 불변조건을 명시하세요. 이 경우 feature spec과 current spec의 언어가 달라도 번역하지 말고, 내용이 달라지지 않는데 provenance나 timestamp만 갱신하도록 계획하지 마세요.
 
 ## 계획 확정
 

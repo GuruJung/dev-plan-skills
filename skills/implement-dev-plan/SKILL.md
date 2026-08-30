@@ -59,9 +59,10 @@ Use the canonical feature worktree for every repository read, edit, command, tes
 
 Before implementation, read `Current Spec Impact` from the tracked feature spec.
 
-- When current spec is absent, create `docs/dev-plans/current-spec.md` with coverage stating that only decisions made under the new system are authoritative there, plus the approved current intent introduced by this feature.
-- Apply `add`, `replace`, and `remove` as current-state statements without chronology or superseded text. Link a relevant feature spec when rationale is needed in current context.
-- For `No change`, preserve the named invariants and do not edit current spec.
+- Determine the predominant prose language of the tracked feature spec body, excluding frontmatter, code blocks, commands, paths, identifiers, enum values, and YAML or JSON keys. When it is unclear, ask the user before modifying current spec.
+- When current spec is absent, create `docs/dev-plans/current-spec.md` in the feature spec's prose language with coverage stating that only decisions made under the new system are authoritative there, plus the approved current intent introduced by this feature.
+- For `add`, `replace`, and `remove`, preserve the meaning of retained current intent, coverage, and decision rationale while making all current-spec prose match the feature spec language, then apply the change as current-state statements. Do not translate commands, paths, or identifiers, create a partially translated mixed-language document, or retain chronology or superseded text. Link a relevant feature spec when rationale is needed in current context.
+- For `No change`, do not translate current spec even when its language differs; preserve the named invariants and do not edit current spec.
 - When latest main's current spec conflicts semantically, do not choose an intent silently; re-plan.
 
 ## Diagnose re-entry
@@ -132,12 +133,15 @@ scripts/integrate-feature.sh \
   --feature-worktree <feature-path> \
   --expected-main <validated-main-sha> \
   --expected-feature <validated-feature-head> \
+  --feature-title '<state-title>' \
   --main-branch main \
   --smoke '<command>' [--smoke '<command>' ...]
 ```
 
-The helper verifies that every path component through the feature metadata directory and local plan is plain. After every smoke passes, it atomically records `integration.complete`, removes local plan and the pending marker, and returns `integrated`. The marker records validated main and feature HEADs and worktrees so the same call can safely reproduce `integrated` after interruption between helper return and state update. Smoke rollback and recovery-required before marker creation preserve local plan. Use the same arguments with `--recover-pending smoke` or `--recover-pending rollback` for interrupted integration.
+The helper verifies that every path component through the feature metadata directory and local plan is plain. It creates a squash commit whose tree is the validated feature tree, whose only parent is validated main, and whose subject is `<state-title> (<id>)`, then fast-forwards main to that commit. When `commit.gpgSign=true`, it also signs the squash commit and stops without changing main or pending metadata if signing or signature verification fails. New `integration.pending` and `integration.complete` markers allow only the five-field format containing validated main, validated feature HEAD, squash main SHA, and both worktrees. A legacy four-field marker stops as `recovery-required` without changing any ref or metadata.
 
-On `integrated`, atomically update state and only then remove `integration.complete`. On re-entry with a marker, reproduce the result with the same helper call when Git and marker agree. Return to revalidation for `stale-main` or `not-fast-forward`; set `needs-replan` for `smoke-rolled-back`; block further integration until main recovery for `recovery-required`. Terminal state may omit local plan.
+After every smoke passes, the helper atomically records `integration.complete`, removes local plan and the pending marker, and returns `integrated` while distinguishing validated feature HEAD as `feature` and squash main SHA as `head`. With a marker, when main is still validated main it may advance to the recorded squash commit and rerun smoke; when main is already the squash SHA it may verify that commit and rerun smoke. Rollback keeps or restores main at validated main and preserves local plan. Recovery-required before marker creation also preserves local plan. Use the same arguments with `--recover-pending smoke` or `--recover-pending rollback` for interrupted integration.
+
+On `integrated`, atomically update state including `integrated_main_sha` and only then remove `integration.complete`. On re-entry with a completion marker, reproduce the result with the same helper call when Git and marker agree. Return to revalidation for `stale-main` or `not-fast-forward`; set `needs-replan` for `smoke-rolled-back`; block further integration until main recovery for `recovery-required`. Terminal state may omit local plan.
 
 Do not push or delete the feature branch or worktree automatically. Write shared state atomically.

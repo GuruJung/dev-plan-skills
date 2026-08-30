@@ -121,6 +121,22 @@ assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 300'
 assert_absent "$repo_root/skills-ko" '기본값이 300초'
 assert_absent "$repo_root/skills-ko" '기본 300초'
 
+# Current spec follows the feature-spec prose language only when current intent changes.
+assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
+  '전체 서술 언어를 tracked feature spec의 주된 서술 언어와 맞추도록 계획하세요.'
+assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
+  'make the prose language of the entire current spec, including retained content, match'
+assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
+  'feature spec과 current spec의 언어가 달라도 번역하지 말고'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'do not translate current spec even when its language differs'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  '일부만 번역한 혼합 언어 문서를 만들거나'
+assert_contains "$repo_root/README.md" \
+  '문서 전체의 서술 언어를 해당'
+assert_contains "$repo_root/docs/dev-plans/current-spec.md" '# 현재 개발 의도'
+assert_absent "$repo_root/docs/dev-plans/current-spec.md" '# Current Development Intent'
+
 # Independent review uses a complete embedded contract without an optional skill dependency.
 assert_absent "$repo_root/skills-ko/implement-dev-plan" '$review-agent'
 assert_absent "$repo_root/skills/implement-dev-plan" '$review-agent'
@@ -195,13 +211,29 @@ assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'scripts/promote-spec.sh'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  'smoke가 모두 통과하면 `integration.complete` marker를 원자적으로 기록한 뒤 local plan'
+  'smoke가 모두 통과하면 helper는 `integration.complete` marker를 원자적으로 기록한 뒤 local plan'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'atomically records `integration.complete`, removes local plan and the pending marker'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  'state를 원자적으로 갱신한 뒤에만 `integration.complete` marker를 제거'
+  'state에 `integrated_main_sha`를 포함해 원자적으로 갱신한 뒤에만'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'atomically update state and only then remove `integration.complete`'
+  'atomically update state including `integrated_main_sha` and only then remove'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '"integrated_main_sha": null'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  '"integrated_main_sha": null'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  '제목이 `<state-title> (<id>)`인 squash commit'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'whose subject is `<state-title> (<id>)`'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  '기존 4필드 marker는 어느 ref나 metadata도 변경하지 않고'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'A legacy four-field marker stops as `recovery-required`'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  '`commit.gpgSign=true`이면 squash commit도 서명하며'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  'When `commit.gpgSign=true`, it also signs the squash commit'
 
 # The canonical installation namespace is renamed without legacy aliases.
 assert_contains "$repo_root/scripts/global-skills-common.sh" \

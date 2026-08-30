@@ -74,7 +74,9 @@ The native goal ends when target and guardrails are verified. Independent review
 
 In `Tracked Feature Spec`, make `Current Spec Impact` state exactly which current intentions to add, replace, or remove in `docs/dev-plans/current-spec.md`. When no current spec exists, include creation of the initial file with coverage limited to decisions made under the new system and the current intent introduced by this feature.
 
-For a pure refactor or another change that preserves current intent, write `No change` and state the invariants to preserve. Do not plan a provenance-only or timestamp-only current-spec edit.
+When `Current Spec Impact` is `add`, `replace`, or `remove`, plan to make the prose language of the entire current spec, including retained content, match the predominant prose language of the tracked feature spec. Exclude frontmatter, code blocks, commands, paths, identifiers, enum values, and YAML or JSON keys from language detection and do not translate them. When the predominant prose language is unclear, ask the user which current-spec language to use. Preserve the meaning of existing current intent, coverage, and decision rationale, and do not create a partially translated mixed-language document.
+
+For a pure refactor or another change that preserves current intent, write `No change` and state the invariants to preserve. In that case, do not translate the current spec even when its language differs from the feature spec, and do not plan a provenance-only or timestamp-only current-spec edit.
 
 ## Finalize the plan
 

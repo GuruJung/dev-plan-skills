@@ -59,9 +59,10 @@ helper는 Git 공용 metadata와 `plans/<id>`까지 모든 경로 구성요소�
 
 구현 전에 tracked feature spec의 `Current Spec Impact`를 읽으세요.
 
-- current spec이 없으면 `docs/dev-plans/current-spec.md`를 만들고 새 체계 이후의 결정만 authoritative하다는 coverage와 승인된 현재 의도를 기록합니다.
-- `add`, `replace`, `remove`를 현재 상태 문장으로 적용하고 연대기나 superseded 문장을 남기지 않습니다. 현재 문맥에서 결정 이유가 필요하면 관련 feature spec을 연결합니다.
-- `No change`이면 명시된 불변조건을 보존하고 current spec을 수정하지 않습니다.
+- frontmatter, code block, 명령, 경로, 식별자, enum 값과 YAML/JSON 키를 제외한 tracked feature spec 본문의 주된 서술 언어를 판별합니다. 명확하지 않으면 current spec을 수정하기 전에 사용자에게 확인합니다.
+- current spec이 없으면 feature spec의 서술 언어로 `docs/dev-plans/current-spec.md`를 만들고 새 체계 이후의 결정만 authoritative하다는 coverage와 승인된 현재 의도를 기록합니다.
+- `add`, `replace`, `remove`이면 retained current intent, coverage와 결정 근거의 의미를 보존하면서 current spec 전체 서술을 feature spec 언어로 맞춘 뒤 현재 상태 문장으로 변경을 적용합니다. 명령, 경로와 식별자는 번역하지 않고, 일부만 번역한 혼합 언어 문서를 만들거나 연대기·superseded 문장을 남기지 않습니다. 현재 문맥에서 결정 이유가 필요하면 관련 feature spec을 연결합니다.
+- `No change`이면 언어가 달라도 번역하지 않고 명시된 불변조건을 보존하며 current spec을 수정하지 않습니다.
 - 최신 main의 current spec과 의미 충돌이 있으면 어느 의도도 임의로 선택하지 말고 재계획합니다.
 
 ## 재진입 진단
@@ -132,12 +133,15 @@ scripts/integrate-feature.sh \
   --feature-worktree <feature-path> \
   --expected-main <validated-main-sha> \
   --expected-feature <validated-feature-head> \
+  --feature-title '<state-title>' \
   --main-branch main \
   --smoke '<command>' [--smoke '<command>' ...]
 ```
 
-helper는 Git 공용 metadata부터 feature metadata directory까지 모든 경로 구성요소와 local plan이 plain인지 확인합니다. smoke가 모두 통과하면 `integration.complete` marker를 원자적으로 기록한 뒤 local plan과 pending marker를 제거하고 `integrated`를 반환합니다. marker는 validated main·feature HEAD와 worktree를 담아 helper 반환 뒤 state 갱신 전 중단된 경우 같은 인자로 안전하게 `integrated`를 재현합니다. smoke rollback과 marker 작성 전 recovery-required에는 local plan을 보존합니다. 중단된 integration은 같은 인자와 `--recover-pending smoke` 또는 `--recover-pending rollback`을 사용하세요.
+helper는 Git 공용 metadata부터 feature metadata directory까지 모든 경로 구성요소와 local plan이 plain인지 확인합니다. 검증된 feature tree로 validated main을 유일한 부모로 하고 제목이 `<state-title> (<id>)`인 squash commit을 만든 뒤 main을 그 commit으로 fast-forward합니다. `commit.gpgSign=true`이면 squash commit도 서명하며 서명 생성이나 검증 실패 시 main과 pending metadata를 변경하지 않고 중단합니다. 새 `integration.pending`과 `integration.complete` marker는 validated main, validated feature HEAD, squash main SHA와 두 worktree를 담는 5필드 형식만 허용합니다. 기존 4필드 marker는 어느 ref나 metadata도 변경하지 않고 `recovery-required`로 중단합니다.
 
-`integrated`이면 state를 원자적으로 갱신한 뒤에만 `integration.complete` marker를 제거하고 종료하세요. marker가 남은 재진입은 Git과 marker가 일치할 때 같은 helper call로 결과를 복구하세요. `stale-main` 또는 `not-fast-forward`면 재검증으로 돌아가고, `smoke-rolled-back`이면 `needs-replan`, `recovery-required`이면 main 복구 전 추가 통합 중단으로 처리하세요. terminal 상태에서는 local plan이 없어도 됩니다.
+smoke가 모두 통과하면 helper는 `integration.complete` marker를 원자적으로 기록한 뒤 local plan과 pending marker를 제거하고, validated feature HEAD를 `feature`, squash main SHA를 `head`로 구분해 `integrated`를 반환합니다. marker가 있으면 main이 아직 validated main일 때 기록된 squash commit으로 전진한 뒤 smoke를 재실행하고, 이미 squash SHA일 때는 그 commit을 검증한 뒤 smoke를 재실행할 수 있습니다. rollback은 main을 validated main에 유지·복원하고 local plan을 보존합니다. marker 작성 전 recovery-required도 local plan을 보존합니다. 중단된 integration은 같은 인자와 `--recover-pending smoke` 또는 `--recover-pending rollback`을 사용하세요.
+
+`integrated`이면 state에 `integrated_main_sha`를 포함해 원자적으로 갱신한 뒤에만 `integration.complete` marker를 제거하고 종료하세요. completion marker가 남은 재진입은 Git과 marker가 일치할 때 같은 helper call로 결과를 복구하세요. `stale-main` 또는 `not-fast-forward`면 재검증으로 돌아가고, `smoke-rolled-back`이면 `needs-replan`, `recovery-required`이면 main 복구 전 추가 통합 중단으로 처리하세요. terminal 상태에서는 local plan이 없어도 됩니다.
 
 자동으로 push하거나 feature branch·worktree를 삭제하지 마세요. 공유 state는 원자적으로 갱신하세요.

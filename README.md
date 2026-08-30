@@ -17,6 +17,8 @@ local plan은 Git metadata에 남아 실행과 재개에 사용되고 통합 smo
 보관한다. 과거 spec의 합본이나 연대기가 아니며, 순수 refactor처럼 현재 의도가 변하지
 않으면 feature spec만 추가하고 current spec은 수정하지 않는다. 코드와 테스트는 실제
 동작의 source of truth이고, current spec은 명시된 coverage 안에서 현재 intent의 기준이다.
+current spec에 의미 변경을 적용할 때는 기존 내용을 포함한 문서 전체의 서술 언어를 해당
+feature spec의 주된 서술 언어와 맞춘다. `No change`에서는 언어 차이만으로 수정하지 않는다.
 기존 `docs/superpowers/plans/` 자료는 변경하거나 새 형식으로 옮기지 않는다.
 
 ## 스킬 작성 언어와 동기화
@@ -131,7 +133,8 @@ Codex가 복원된 스킬을 자동으로 인식하지 못하면 세션을 새�
 4. 행동 변경은 `$create-dev-plan`, `$save-dev-plan`, `$implement-dev-plan`으로 계획·구현한다.
 5. feature worktree의 후보 스킬을 최소 재현과 독립된 새 세션으로 검증한다. 전역
    설치본은 후보를 시험하기 위해 변경하지 않는다.
-6. 검증된 변경만 `main`에 통합하고 소비 프로젝트에서 실패 단계를 다시 실행한다.
+6. 검증된 변경은 feature tree 전체를 담는 단일 squash commit으로 `main`에 통합하고
+   소비 프로젝트에서 실패 단계를 다시 실행한다.
 
 canonical 작업 디렉터리는 깨끗한 `main`으로 유지한다. 스킬 변경은 feature worktree에서
 수행하며, Git 커밋 해시를 설치본의 버전 식별자로 사용한다. 활성 세션이 병합된 변경을

@@ -92,6 +92,7 @@ marker만으로 사용자 선택을 추정하지 마세요. handoff는 새 대�
      "last_checkpoint": null,
      "validated_feature_head": null,
      "validated_main_sha": null,
+     "integrated_main_sha": null,
      "last_failure": null,
      "remaining_p3": [],
      "goal": null

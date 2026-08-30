@@ -11,6 +11,7 @@ Usage:
     --feature-worktree PATH \
     --expected-main SHA \
     --expected-feature SHA \
+    --feature-title TITLE \
     [--main-branch NAME] \
     [--recover-pending smoke|rollback] \
     [--smoke COMMAND ...]
@@ -40,6 +41,7 @@ main_worktree=
 feature_worktree=
 expected_main=
 expected_feature=
+feature_title=
 main_branch=main
 recover_pending=
 declare -a smoke_commands=()
@@ -76,6 +78,11 @@ while (($#)); do
       expected_feature=$2
       shift 2
       ;;
+    --feature-title)
+      (($# >= 2)) || die_usage "missing value for --feature-title"
+      feature_title=$2
+      shift 2
+      ;;
     --main-branch)
       (($# >= 2)) || die_usage "missing value for --main-branch"
       main_branch=$2
@@ -110,6 +117,11 @@ done
 [[ -n "$feature_worktree" ]] || die_usage "--feature-worktree is required"
 [[ -n "$expected_main" ]] || die_usage "--expected-main is required"
 [[ -n "$expected_feature" ]] || die_usage "--expected-feature is required"
+[[ -n "$feature_title" ]] || die_usage "--feature-title is required"
+if [[ "$feature_title" == *$'\n'* || "$feature_title" == *$'\r'* ]]; then
+  die_usage "--feature-title must be a non-empty single line"
+fi
+commit_subject="$feature_title ($feature_id)"
 if [[ -n "$recover_pending" ]] &&
    [[ "$recover_pending" != smoke ]] &&
    [[ "$recover_pending" != rollback ]]; then
@@ -162,6 +174,8 @@ local_plan=$workflow_dir/plans/$feature_id/plan.md
 plans_dir=$workflow_dir/plans
 feature_metadata_dir=$plans_dir/$feature_id
 completion_file=$feature_metadata_dir/integration.complete
+pending_file=$workflow_dir/integration.pending
+lock_file=$workflow_dir/integration.lock
 [[ -d "$plans_dir" && ! -L "$plans_dir" ]] || {
   printf 'status=invalid-or-dirty-worktree reason=invalid-plans-dir\n' >&2
   exit 22
@@ -174,15 +188,39 @@ if [[ -L "$completion_file" || -e "$completion_file" && ! -f "$completion_file" 
   printf 'status=invalid-or-dirty-worktree reason=invalid-completion-marker\n' >&2
   exit 22
 fi
+if [[ -L "$pending_file" || -e "$pending_file" && ! -f "$pending_file" ]]; then
+  printf 'status=invalid-or-dirty-worktree reason=invalid-pending-marker\n' >&2
+  exit 22
+fi
+if [[ -L "$lock_file" || -e "$lock_file" && ! -f "$lock_file" ]]; then
+  printf 'status=invalid-or-dirty-worktree reason=invalid-lock-file\n' >&2
+  exit 22
+fi
 if [[ -L "$local_plan" || -e "$local_plan" && ! -f "$local_plan" ]]; then
   die_usage "local plan must be a plain file"
 fi
-if [[ ! -f "$local_plan" && "$recover_pending" != smoke && ! -f "$completion_file" ]]; then
+if [[ ! -f "$local_plan" && ! -f "$completion_file" ]]; then
   die_usage "local plan must be a plain file"
 fi
-mkdir -p "$workflow_dir"
-lock_file=$workflow_dir/integration.lock
-pending_file=$workflow_dir/integration.pending
+
+# Reject the legacy four-field marker format before opening the lock file so this compatibility
+# failure leaves both refs and metadata unchanged.
+if [[ -f "$pending_file" ]]; then
+  mapfile -t marker_probe < "$pending_file"
+  if ((${#marker_probe[@]} != 5)); then
+    printf 'status=recovery-required reason=invalid-pending-marker marker=%q\n' \
+      "$pending_file" >&2
+    exit 31
+  fi
+fi
+if [[ -f "$completion_file" ]]; then
+  mapfile -t marker_probe < "$completion_file"
+  if ((${#marker_probe[@]} != 5)); then
+    printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
+      "$completion_file" >&2
+    exit 31
+  fi
+fi
 
 if [[ ! -f "$pending_file" ]]; then
   if [[ -n "$(git -C "$main_root" status --porcelain)" ]]; then
@@ -210,24 +248,48 @@ fi
 actual_main=$(git -C "$main_root" rev-parse HEAD)
 actual_feature=$(git -C "$feature_root" rev-parse HEAD)
 
+validate_squash_commit() {
+  local squash_sha=$1 pre_merge_sha=$2 feature_sha=$3
+  local parent_line feature_tree squash_tree actual_subject
+
+  git -C "$main_root" cat-file -e "$squash_sha^{commit}" 2>/dev/null || return 1
+  git -C "$main_root" cat-file -e "$pre_merge_sha^{commit}" 2>/dev/null || return 1
+  git -C "$main_root" cat-file -e "$feature_sha^{commit}" 2>/dev/null || return 1
+  parent_line=$(git -C "$main_root" rev-list --parents -n 1 "$squash_sha") || return 1
+  [[ "$parent_line" == "$squash_sha $pre_merge_sha" ]] || return 1
+  feature_tree=$(git -C "$main_root" rev-parse "$feature_sha^{tree}") || return 1
+  squash_tree=$(git -C "$main_root" rev-parse "$squash_sha^{tree}") || return 1
+  [[ "$squash_tree" == "$feature_tree" ]] || return 1
+  actual_subject=$(git -C "$main_root" log -1 --format=%s "$squash_sha") || return 1
+  [[ "$actual_subject" == "$commit_subject" ]]
+}
+
 if [[ -f "$completion_file" && ! -f "$pending_file" ]]; then
   mapfile -t completion_values < "$completion_file"
-  if ((${#completion_values[@]} != 4)) ||
+  if ((${#completion_values[@]} != 5)) ||
      [[ "${completion_values[0]}" != "$expected_main" ]] ||
      [[ "${completion_values[1]}" != "$expected_feature" ]] ||
-     [[ "${completion_values[2]}" != "$main_root" ]] ||
-     [[ "${completion_values[3]}" != "$feature_root" ]] ||
-     [[ "$actual_main" != "$expected_feature" ]] ||
-     [[ "$actual_feature" != "$expected_feature" ]]; then
+     [[ "${completion_values[3]}" != "$main_root" ]] ||
+     [[ "${completion_values[4]}" != "$feature_root" ]]; then
     printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
       "$completion_file" >&2
     exit 31
   fi
-  printf 'status=integrated pre=%s head=%s smoke_count=%s recovered=true marker=%q\n' \
-    "$expected_main" "$expected_feature" "${#smoke_commands[@]}" "$completion_file"
+  merged_sha=${completion_values[2]}
+  if [[ "$actual_main" != "$merged_sha" ]] ||
+     [[ "$actual_feature" != "$expected_feature" ]] ||
+     ! validate_squash_commit "$merged_sha" "$expected_main" "$expected_feature"; then
+    printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
+      "$completion_file" >&2
+    exit 31
+  fi
+  printf 'status=integrated pre=%s feature=%s head=%s smoke_count=%s recovered=true marker=%q\n' \
+    "$expected_main" "$expected_feature" "$merged_sha" "${#smoke_commands[@]}" \
+    "$completion_file"
   exit 0
 fi
 
+smoke_already_complete=false
 if [[ -f "$pending_file" ]]; then
   if [[ -z "$recover_pending" ]]; then
     printf 'status=recovery-required reason=pending-integration marker=%q\n' "$pending_file" >&2
@@ -235,21 +297,21 @@ if [[ -f "$pending_file" ]]; then
   fi
 
   mapfile -t pending_values < "$pending_file"
-  if ((${#pending_values[@]} != 4)); then
+  if ((${#pending_values[@]} != 5)); then
     printf 'status=recovery-required reason=invalid-pending-marker marker=%q\n' \
       "$pending_file" >&2
     exit 31
   fi
   pre_merge_sha=${pending_values[0]}
-  merged_sha=${pending_values[1]}
-  pending_main_root=${pending_values[2]}
-  pending_feature_root=${pending_values[3]}
+  pending_feature_sha=${pending_values[1]}
+  merged_sha=${pending_values[2]}
+  pending_main_root=${pending_values[3]}
+  pending_feature_root=${pending_values[4]}
 
   if [[ "$pre_merge_sha" != "$expected_main" ]] ||
-     [[ "$merged_sha" != "$expected_feature" ]] ||
+     [[ "$pending_feature_sha" != "$expected_feature" ]] ||
      [[ "$pending_main_root" != "$main_root" ]] ||
-     [[ "$pending_feature_root" != "$feature_root" ]] ||
-     [[ "$actual_main" != "$merged_sha" ]]; then
+     [[ "$pending_feature_root" != "$feature_root" ]]; then
     printf 'status=recovery-required reason=pending-marker-mismatch marker=%q\n' \
       "$pending_file" >&2
     exit 31
@@ -258,10 +320,31 @@ if [[ -f "$pending_file" ]]; then
   if [[ "$recover_pending" == rollback ]]; then
     [[ ! -f "$completion_file" ]] ||
       die_usage "completed smoke must be recovered with --recover-pending smoke"
-    if ! git -C "$main_root" reset --hard "$pre_merge_sha" >/dev/null; then
-      printf 'status=recovery-required reason=reset-failed pre=%s merged=%s\n' \
-        "$pre_merge_sha" "$merged_sha" >&2
+    if [[ "$actual_main" != "$pre_merge_sha" && "$actual_main" != "$merged_sha" ]]; then
+      printf 'status=recovery-required reason=pending-marker-mismatch marker=%q\n' \
+        "$pending_file" >&2
       exit 31
+    fi
+    if [[ -n "$(git -C "$main_root" status --porcelain)" ]]; then
+      printf 'status=recovery-required reason=dirty-main-before-rollback\n' >&2
+      exit 31
+    fi
+    if [[ "$actual_main" == "$merged_sha" ]]; then
+      parent_line=$(git -C "$main_root" rev-list --parents -n 1 "$merged_sha") || {
+        printf 'status=recovery-required reason=invalid-squash-parent head=%s\n' \
+          "$merged_sha" >&2
+        exit 31
+      }
+      if [[ "$parent_line" != "$merged_sha $pre_merge_sha" ]]; then
+        printf 'status=recovery-required reason=invalid-squash-parent head=%s\n' \
+          "$merged_sha" >&2
+        exit 31
+      fi
+      if ! git -C "$main_root" reset --hard "$pre_merge_sha" >/dev/null; then
+        printf 'status=recovery-required reason=reset-failed pre=%s merged=%s\n' \
+          "$pre_merge_sha" "$merged_sha" >&2
+        exit 31
+      fi
     fi
     if [[ -n "$(git -C "$main_root" status --porcelain)" ]]; then
       printf 'status=recovery-required reason=dirty-after-reset pre=%s merged=%s\n' \
@@ -269,14 +352,47 @@ if [[ -f "$pending_file" ]]; then
       exit 31
     fi
     rm -f "$pending_file"
-    printf 'status=smoke-rolled-back pre=%s feature=%s failed_smoke=recovery-requested\n' \
-      "$pre_merge_sha" "$merged_sha"
+    printf 'status=smoke-rolled-back pre=%s feature=%s head=%s failed_smoke=recovery-requested\n' \
+      "$pre_merge_sha" "$expected_feature" "$merged_sha"
     exit 30
   fi
 
-  if [[ -n "$(git -C "$main_root" status --porcelain)" ]]; then
-    printf 'status=recovery-required reason=dirty-main-before-smoke-recovery\n' >&2
+  if [[ "$actual_feature" != "$expected_feature" ]] ||
+     { [[ "$actual_main" != "$pre_merge_sha" ]] && [[ "$actual_main" != "$merged_sha" ]]; } ||
+     ! validate_squash_commit "$merged_sha" "$pre_merge_sha" "$pending_feature_sha"; then
+    printf 'status=recovery-required reason=pending-marker-mismatch marker=%q\n' \
+      "$pending_file" >&2
     exit 31
+  fi
+
+  if [[ -n "$(git -C "$main_root" status --porcelain)" ]] ||
+     [[ -n "$(git -C "$feature_root" status --porcelain)" ]]; then
+    printf 'status=recovery-required reason=dirty-worktree-during-recovery\n' >&2
+    exit 31
+  fi
+
+  if [[ -f "$completion_file" ]]; then
+    mapfile -t completion_values < "$completion_file"
+    if ((${#completion_values[@]} != 5)) ||
+       [[ "${completion_values[0]}" != "${pending_values[0]}" ]] ||
+       [[ "${completion_values[1]}" != "${pending_values[1]}" ]] ||
+       [[ "${completion_values[2]}" != "${pending_values[2]}" ]] ||
+       [[ "${completion_values[3]}" != "${pending_values[3]}" ]] ||
+       [[ "${completion_values[4]}" != "${pending_values[4]}" ]] ||
+       [[ "$actual_main" != "$merged_sha" ]]; then
+      printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
+        "$completion_file" >&2
+      exit 31
+    fi
+    smoke_already_complete=true
+  fi
+
+  if [[ "$actual_main" == "$pre_merge_sha" ]]; then
+    if ! git -C "$main_root" merge --ff-only "$merged_sha" >/dev/null; then
+      printf 'status=recovery-required reason=merge-failed pre=%s feature=%s head=%s\n' \
+        "$pre_merge_sha" "$expected_feature" "$merged_sha" >&2
+      exit 31
+    fi
   fi
 else
   [[ -z "$recover_pending" ]] || die_usage "no pending integration exists"
@@ -296,33 +412,65 @@ else
   fi
 
   pre_merge_sha=$actual_main
+  feature_tree=$(git -C "$main_root" rev-parse "$actual_feature^{tree}")
+  commit_signing=false
+  if configured_signing=$(git -C "$main_root" config --bool --get commit.gpgSign); then
+    commit_signing=$configured_signing
+  else
+    signing_status=$?
+    if [[ $signing_status != 1 ]]; then
+      printf 'status=recovery-required reason=invalid-commit-signing-config\n' >&2
+      exit 31
+    fi
+  fi
+  commit_tree_args=("$feature_tree" -p "$pre_merge_sha" -m "$commit_subject")
+  if [[ "$commit_signing" == true ]]; then
+    commit_tree_args+=(-S)
+  fi
+  if ! merged_sha=$(git -C "$main_root" commit-tree "${commit_tree_args[@]}"); then
+    printf 'status=recovery-required reason=squash-commit-failed pre=%s feature=%s\n' \
+      "$pre_merge_sha" "$actual_feature" >&2
+    exit 31
+  fi
+  if ! validate_squash_commit "$merged_sha" "$pre_merge_sha" "$actual_feature"; then
+    printf 'status=recovery-required reason=invalid-squash-commit pre=%s feature=%s head=%s\n' \
+      "$pre_merge_sha" "$actual_feature" "$merged_sha" >&2
+    exit 31
+  fi
   pending_tmp=$pending_file.$$
-  printf '%s\n%s\n%s\n%s\n' \
-    "$pre_merge_sha" "$actual_feature" "$main_root" "$feature_root" >"$pending_tmp"
-  mv "$pending_tmp" "$pending_file"
+  printf '%s\n%s\n%s\n%s\n%s\n' \
+    "$pre_merge_sha" "$actual_feature" "$merged_sha" "$main_root" "$feature_root" \
+    >"$pending_tmp"
+  mv -- "$pending_tmp" "$pending_file"
 
-  if ! git -C "$main_root" merge --ff-only "$actual_feature" >/dev/null; then
+  if ! git -C "$main_root" merge --ff-only "$merged_sha" >/dev/null; then
     current_after_merge=$(git -C "$main_root" rev-parse HEAD)
     if [[ "$current_after_merge" == "$pre_merge_sha" ]]; then
       rm -f "$pending_file"
     fi
-    printf 'status=recovery-required reason=merge-failed pre=%s feature=%s actual=%s\n' \
-      "$pre_merge_sha" "$actual_feature" "$current_after_merge" >&2
+    printf 'status=recovery-required reason=merge-failed pre=%s feature=%s head=%s actual=%s\n' \
+      "$pre_merge_sha" "$actual_feature" "$merged_sha" "$current_after_merge" >&2
     exit 31
   fi
-  merged_sha=$(git -C "$main_root" rev-parse HEAD)
 fi
 
 failed_index=
-for index in "${!smoke_commands[@]}"; do
-  if ! (cd "$main_root" && bash -c "${smoke_commands[$index]}"); then
-    failed_index=$index
-    break
-  fi
-done
+if [[ "$smoke_already_complete" == false ]]; then
+  for index in "${!smoke_commands[@]}"; do
+    if ! (cd "$main_root" && bash -c "${smoke_commands[$index]}"); then
+      failed_index=$index
+      break
+    fi
+  done
+fi
 
 if [[ -z "$failed_index" ]] && [[ -n "$(git -C "$main_root" status --porcelain)" ]]; then
   failed_index=dirty-main-after-smoke
+fi
+if [[ -z "$failed_index" ]] &&
+   { [[ "$(git -C "$feature_root" rev-parse HEAD)" != "$expected_feature" ]] ||
+     [[ -n "$(git -C "$feature_root" status --porcelain)" ]]; }; then
+  failed_index=changed-feature-after-smoke
 fi
 
 if [[ -n "$failed_index" ]]; then
@@ -345,15 +493,18 @@ if [[ -n "$failed_index" ]]; then
   fi
 
   rm -f "$pending_file"
-  printf 'status=smoke-rolled-back pre=%s feature=%s failed_smoke=%s\n' \
-    "$pre_merge_sha" "$merged_sha" "$failed_index"
+  printf 'status=smoke-rolled-back pre=%s feature=%s head=%s failed_smoke=%s\n' \
+    "$pre_merge_sha" "$expected_feature" "$merged_sha" "$failed_index"
   exit 30
 fi
 
-completion_tmp=$completion_file.tmp-$$
-printf '%s\n%s\n%s\n%s\n' \
-  "$pre_merge_sha" "$merged_sha" "$main_root" "$feature_root" >"$completion_tmp"
-mv -- "$completion_tmp" "$completion_file"
+if [[ "$smoke_already_complete" == false ]]; then
+  completion_tmp=$completion_file.tmp-$$
+  printf '%s\n%s\n%s\n%s\n%s\n' \
+    "$pre_merge_sha" "$expected_feature" "$merged_sha" "$main_root" "$feature_root" \
+    >"$completion_tmp"
+  mv -- "$completion_tmp" "$completion_file"
+fi
 
 if [[ -f "$local_plan" ]] && ! rm -- "$local_plan"; then
   printf 'status=recovery-required reason=local-plan-cleanup-failed plan=%q\n' \
@@ -361,5 +512,6 @@ if [[ -f "$local_plan" ]] && ! rm -- "$local_plan"; then
   exit 31
 fi
 rm -f "$pending_file"
-printf 'status=integrated pre=%s head=%s smoke_count=%s marker=%q\n' \
-  "$pre_merge_sha" "$merged_sha" "${#smoke_commands[@]}" "$completion_file"
+printf 'status=integrated pre=%s feature=%s head=%s smoke_count=%s marker=%q\n' \
+  "$pre_merge_sha" "$expected_feature" "$merged_sha" "${#smoke_commands[@]}" \
+  "$completion_file"

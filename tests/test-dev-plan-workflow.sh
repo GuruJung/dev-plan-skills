@@ -155,11 +155,16 @@ make_integration_case() {
   main_root=$case_root
   feature_root=$test_root/$name-feature
   git -C "$main_root" worktree add -qb "feature/$feature_id" "$feature_root"
-  printf 'feature\n' >>"$feature_root/README.md"
-  git -C "$feature_root" add README.md
-  git -C "$feature_root" commit -qm 'Implement feature'
   expected_main=$(git -C "$main_root" rev-parse HEAD)
+  printf 'feature one\n' >>"$feature_root/README.md"
+  git -C "$feature_root" add README.md
+  git -C "$feature_root" commit -qm 'Implement first feature part'
+  printf 'feature two\n' >"$feature_root/feature.txt"
+  git -C "$feature_root" add feature.txt
+  git -C "$feature_root" commit -qm 'Implement second feature part'
   expected_feature=$(git -C "$feature_root" rev-parse HEAD)
+  feature_title='Example squash feature'
+  squash_subject="$feature_title ($feature_id)"
   metadata_dir=$main_root/.git/dev-plan-workflow
   temporary_dir=$metadata_dir/plans/$feature_id
   mkdir -p -- "$temporary_dir"
@@ -175,14 +180,35 @@ $integrator \
   --feature-worktree "$feature_root" \
   --expected-main "$expected_main" \
   --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
   --main-branch main \
   --smoke 'test -f README.md' >/dev/null
-[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_feature" ]] ||
-  fail 'successful integration did not advance main'
+integrated_head=$(git -C "$main_root" rev-parse HEAD)
+[[ "$integrated_head" != "$expected_feature" ]] ||
+  fail 'successful integration reused feature HEAD instead of creating a squash commit'
+[[ $(git -C "$main_root" rev-list --count "$expected_main..$integrated_head") == 1 ]] ||
+  fail 'successful integration added more than one commit to main'
+[[ $(git -C "$main_root" rev-list --parents -n 1 "$integrated_head") == \
+   "$integrated_head $expected_main" ]] ||
+  fail 'squash commit does not have validated main as its only parent'
+[[ $(git -C "$main_root" rev-parse "$integrated_head^{tree}") == \
+   $(git -C "$feature_root" rev-parse "$expected_feature^{tree}") ]] ||
+  fail 'squash commit tree differs from validated feature tree'
+[[ $(git -C "$main_root" log -1 --format=%s "$integrated_head") == "$squash_subject" ]] ||
+  fail 'squash commit subject does not contain the feature title and ID'
+[[ $(git -C "$feature_root" rev-parse HEAD) == "$expected_feature" ]] ||
+  fail 'successful integration changed feature HEAD'
+[[ $(git -C "$feature_root" rev-list --count "$expected_main..$expected_feature") == 2 ]] ||
+  fail 'successful integration changed feature commit history'
 assert_absent "$temporary_dir/plan.md"
 assert_absent "$metadata_dir/integration.pending"
 [[ -f "$temporary_dir/integration.complete" && ! -L "$temporary_dir/integration.complete" ]] ||
   fail 'successful integration did not retain a plain completion marker'
+mapfile -t completion_values <"$temporary_dir/integration.complete"
+[[ ${#completion_values[@]} == 5 && ${completion_values[0]} == "$expected_main" &&
+   ${completion_values[1]} == "$expected_feature" &&
+   ${completion_values[2]} == "$integrated_head" ]] ||
+  fail 'successful integration wrote an invalid completion marker'
 $integrator \
   --metadata-dir "$metadata_dir" \
   --feature-id "$feature_id" \
@@ -190,6 +216,7 @@ $integrator \
   --feature-worktree "$feature_root" \
   --expected-main "$expected_main" \
   --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
   --main-branch main \
   --smoke 'test -f README.md' >/dev/null
 rm -- "$temporary_dir/integration.complete"
@@ -204,6 +231,7 @@ $integrator \
   --feature-worktree "$feature_root" \
   --expected-main "$expected_main" \
   --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
   --main-branch main \
   --smoke 'false' >/dev/null
 integration_status=$?
@@ -214,6 +242,195 @@ set -e
 [[ -f "$temporary_dir/plan.md" ]] || fail 'smoke rollback removed the local plan'
 assert_absent "$metadata_dir/integration.pending"
 assert_absent "$temporary_dir/integration.complete"
+
+# Concurrent feature changes during smoke are preserved while main is rolled back.
+make_integration_case integration-feature-moved-during-smoke
+printf -v change_feature_smoke 'git -C %q commit --allow-empty -qm %q' \
+  "$feature_root" 'Concurrent feature change'
+set +e
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --smoke "$change_feature_smoke" >/dev/null
+integration_status=$?
+set -e
+[[ $integration_status == 30 ]] || fail 'concurrent feature change returned an unexpected status'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
+  fail 'concurrent feature change did not roll main back'
+[[ $(git -C "$feature_root" rev-parse HEAD) != "$expected_feature" ]] ||
+  fail 'concurrent feature change was discarded'
+[[ -f "$temporary_dir/plan.md" ]] || fail 'concurrent feature change removed the local plan'
+assert_absent "$metadata_dir/integration.pending"
+assert_absent "$temporary_dir/integration.complete"
+
+# A new pending marker can resume smoke before main advances.
+make_integration_case integration-pending-smoke
+feature_tree=$(git -C "$feature_root" rev-parse "$expected_feature^{tree}")
+squash_head=$(git -C "$main_root" commit-tree "$feature_tree" \
+  -p "$expected_main" -m "$squash_subject")
+printf '%s\n%s\n%s\n%s\n%s\n' \
+  "$expected_main" "$expected_feature" "$squash_head" "$main_root" "$feature_root" \
+  >"$metadata_dir/integration.pending"
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --recover-pending smoke \
+  --smoke 'test -f feature.txt' >/dev/null
+[[ $(git -C "$main_root" rev-parse HEAD) == "$squash_head" ]] ||
+  fail 'pending smoke recovery did not advance main to the recorded squash commit'
+assert_absent "$metadata_dir/integration.pending"
+assert_absent "$temporary_dir/plan.md"
+rm -- "$temporary_dir/integration.complete"
+
+# A new pending marker can roll back before main advances without removing the local plan.
+make_integration_case integration-pending-rollback
+feature_tree=$(git -C "$feature_root" rev-parse "$expected_feature^{tree}")
+squash_head=$(git -C "$main_root" commit-tree "$feature_tree" \
+  -p "$expected_main" -m "$squash_subject")
+printf '%s\n%s\n%s\n%s\n%s\n' \
+  "$expected_main" "$expected_feature" "$squash_head" "$main_root" "$feature_root" \
+  >"$metadata_dir/integration.pending"
+set +e
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --recover-pending rollback >/dev/null
+integration_status=$?
+set -e
+[[ $integration_status == 30 ]] || fail 'pending rollback returned an unexpected status'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
+  fail 'pending rollback changed main before integration'
+[[ -f "$temporary_dir/plan.md" ]] || fail 'pending rollback removed the local plan'
+assert_absent "$metadata_dir/integration.pending"
+
+# Rollback before main advances does not require the unreferenced squash object to survive.
+make_integration_case integration-pending-pruned-rollback
+feature_tree=$(git -C "$feature_root" rev-parse "$expected_feature^{tree}")
+squash_head=$(git -C "$main_root" commit-tree "$feature_tree" \
+  -p "$expected_main" -m "$squash_subject")
+printf '%s\n%s\n%s\n%s\n%s\n' \
+  "$expected_main" "$expected_feature" "$squash_head" "$main_root" "$feature_root" \
+  >"$metadata_dir/integration.pending"
+git -C "$main_root" prune --expire now
+if git -C "$main_root" cat-file -e "$squash_head^{commit}" 2>/dev/null; then
+  fail 'prune retained the unreferenced squash commit used by the rollback test'
+fi
+set +e
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --recover-pending rollback >/dev/null
+integration_status=$?
+set -e
+[[ $integration_status == 30 ]] || fail 'pruned pending rollback returned an unexpected status'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
+  fail 'pruned pending rollback changed main'
+[[ -f "$temporary_dir/plan.md" ]] || fail 'pruned pending rollback removed the local plan'
+assert_absent "$metadata_dir/integration.pending"
+
+# Squash commit creation honors commit.gpgSign before recording pending integration metadata.
+make_integration_case integration-signing-policy
+git -C "$main_root" config commit.gpgSign true
+git -C "$main_root" config gpg.program /bin/false
+git -C "$main_root" config merge.verifySignatures true
+signing_output=$test_root/integration-signing-policy.output
+set +e
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --smoke 'true' >"$signing_output" 2>&1
+integration_status=$?
+set -e
+[[ $integration_status == 31 ]] || fail 'signing failure returned an unexpected status'
+grep -Fq 'reason=squash-commit-failed' "$signing_output" ||
+  fail 'integration did not apply commit.gpgSign while creating the squash commit'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
+  fail 'signing failure changed main'
+[[ -f "$temporary_dir/plan.md" ]] || fail 'signing failure removed the local plan'
+assert_absent "$metadata_dir/integration.pending"
+assert_absent "$temporary_dir/integration.complete"
+
+# Legacy four-field markers are rejected without changing main or metadata.
+make_integration_case integration-legacy-pending
+printf '%s\n%s\n%s\n%s\n' \
+  "$expected_main" "$expected_feature" "$main_root" "$feature_root" \
+  >"$metadata_dir/integration.pending"
+set +e
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --recover-pending smoke \
+  --smoke 'true' >/dev/null 2>&1
+integration_status=$?
+set -e
+[[ $integration_status == 31 ]] || fail 'legacy pending marker returned an unexpected status'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
+  fail 'legacy pending marker changed main'
+[[ -f "$temporary_dir/plan.md" && -f "$metadata_dir/integration.pending" ]] ||
+  fail 'legacy pending marker changed integration metadata'
+assert_absent "$metadata_dir/integration.lock"
+
+make_integration_case integration-legacy-complete
+git -C "$main_root" merge --ff-only "$expected_feature" >/dev/null
+rm -- "$temporary_dir/plan.md"
+printf '%s\n%s\n%s\n%s\n' \
+  "$expected_main" "$expected_feature" "$main_root" "$feature_root" \
+  >"$temporary_dir/integration.complete"
+set +e
+$integrator \
+  --metadata-dir "$metadata_dir" \
+  --feature-id "$feature_id" \
+  --main-worktree "$main_root" \
+  --feature-worktree "$feature_root" \
+  --expected-main "$expected_main" \
+  --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
+  --main-branch main \
+  --smoke 'true' >/dev/null 2>&1
+integration_status=$?
+set -e
+[[ $integration_status == 31 ]] || fail 'legacy completion marker returned an unexpected status'
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_feature" ]] ||
+  fail 'legacy completion marker changed main'
+[[ -f "$temporary_dir/integration.complete" ]] ||
+  fail 'legacy completion marker was removed'
+assert_absent "$metadata_dir/integration.lock"
 
 # A symlinked feature metadata directory cannot redirect local-plan access outside Git metadata.
 make_integration_case integration-metadata-symlink
@@ -228,6 +445,7 @@ expect_failure 'integrator followed a feature metadata symlink' \
   --feature-worktree "$feature_root" \
   --expected-main "$expected_main" \
   --expected-feature "$expected_feature" \
+  --feature-title "$feature_title" \
   --main-branch main \
   --smoke 'test -f README.md'
 [[ -f "$outside_metadata/plan.md" ]] || fail 'symlink failure removed the external plan'

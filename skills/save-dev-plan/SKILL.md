@@ -92,6 +92,7 @@ When content is missing or incomplete, do not invent it. Ask the user to return 
      "last_checkpoint": null,
      "validated_feature_head": null,
      "validated_main_sha": null,
+     "integrated_main_sha": null,
      "last_failure": null,
      "remaining_p3": [],
      "goal": null
