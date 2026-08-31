@@ -149,7 +149,7 @@ assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'was introduced by this change'
 
-# Plan handoff saves only; running remains an explicit and separate action.
+# Plan handoff saves and then implements; direct saves remain save-only.
 assert_path_absent "$repo_root/skills-ko/plan-run-feature"
 assert_path_absent "$repo_root/skills/plan-run-feature"
 for old_name in plan-feature save-approved-plan run-feature; do
@@ -161,21 +161,69 @@ done
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
   'skill: save-dev-plan'
 assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'continuation: save-only'
+  'continuation: implement-dev-plan'
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
-  '명시 호출과 handoff 호출 모두 저장 전용입니다.'
+  '명시적인 `$save-dev-plan` 호출은 저장 전용입니다.'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
-  'Never treat saving as implementation approval or invoke `$implement-dev-plan` directly.'
+  'An explicit `$save-dev-plan` invocation is save-only.'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '`../implement-dev-plan/SKILL.md`를 읽고'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'For a `continuation: implement-dev-plan` handoff, before writing files, read `../implement-dev-plan/SKILL.md`'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '`continuation: save-only`가 있으면 이전 형식의 저장 전용 handoff로 계속 허용하되'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  '`continuation: save-only`, continue to allow it as a legacy save-only handoff'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  'sibling `$implement-dev-plan` 계약을 delegated invocation으로 즉시 적용하세요.'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'immediately apply the sibling `$implement-dev-plan` contract as a delegated invocation'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '저장 성공 보고 유무와 관계없이 확정 계획의 제안 ID, 그 ID의 기존 숫자 suffix metadata'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'regardless of whether save success was reported, inspect the finalized plan'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '이 확정 계획에 대해 같은 대화에서 이전에 저장했다고 보고한 ID만 조사하세요.'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'only IDs reported as saved for this finalized plan earlier in the same conversation.'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '후보를 읽기 전에 절대 Git 공용 metadata부터 후보 directory까지의 모든 경로 구성요소와 후보 artifact가 plain인지'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'Before reading a candidate, require every path component from the absolute Git common metadata directory'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  'symbolic link나 plain이 아닌 경로는 따라 읽지 말고 unsafe conflict로 무변경 중단하세요.'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'Do not follow a symbolic link or other non-plain path; stop without changes as an unsafe conflict.'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '일치하는 완성 destination이 정확히 하나이면 기존 ID를 재사용하세요.'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'when exactly one complete destination has a state whose ID and paths'
+assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
+  '저장 단계 자체에서는 main worktree, branch와 index를 변경하거나'
+assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
+  'During the save stage itself, do not modify the main worktree'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '`$implement-dev-plan [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요.'
+  '다음 중 하나일 때만 실행하세요.'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation.'
+  'Run only when either condition is true:'
+assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
+  '`$save-dev-plan`이 그 계획을 새로 저장했거나 기존 저장물과 동일함을 검증한 직후'
+assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
+  '`$save-dev-plan` delegated execution with the resolved ID immediately after newly saving that plan'
+assert_absent "$repo_root/skills-ko/create-dev-plan" \
+  'continuation: save-only'
+assert_absent "$repo_root/skills/create-dev-plan" \
+  'continuation: save-only'
 assert_contains "$repo_root/skills-ko/save-dev-plan/SKILL.md" \
   '모든 feature-ID-bearing 필드와 경로를 일관되게 갱신합니다.'
 assert_contains "$repo_root/skills/save-dev-plan/SKILL.md" \
   'update every feature-ID-bearing field and path consistently.'
 assert_contains "$repo_root/skills/save-dev-plan/agents/openai.yaml" \
   'allow_implicit_invocation: true'
+assert_contains "$repo_root/skills/create-dev-plan/agents/openai.yaml" \
+  'Create a plan with an implementation handoff'
+assert_contains "$repo_root/skills/save-dev-plan/agents/openai.yaml" \
+  'Persist plans and continue approved handoffs'
 for skill in create-dev-plan implement-dev-plan; do
   assert_contains "$repo_root/skills/$skill/agents/openai.yaml" \
     'allow_implicit_invocation: false'

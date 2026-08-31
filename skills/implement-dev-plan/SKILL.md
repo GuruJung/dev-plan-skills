@@ -1,6 +1,6 @@
 ---
 name: implement-dev-plan
-description: Prepare, implement, evaluate, independently review, and integrate a saved new-format durable feature spec and local implementation plan, or diagnose and resume interrupted implementation. Use only when the user explicitly invokes "$implement-dev-plan", optionally with a feature ID.
+description: Prepare, implement, evaluate, independently review, and integrate a saved new-format durable feature spec and local implementation plan, or diagnose and resume interrupted implementation. Use only when the user explicitly invokes "$implement-dev-plan", optionally with a feature ID, or an approved same-conversation `$save-dev-plan` handoff delegates it.
 ---
 
 # Implement Dev Plan
@@ -11,7 +11,22 @@ Use the user's current conversation language for questions, status, and prose ar
 
 ## Resolve the feature
 
-Run only after an explicit `$implement-dev-plan [<feature-id>]` invocation. Resolve the absolute common Git directory and find an ID under `<git-common-dir>/dev-plan-workflow/plans/` in this order:
+Run only when either condition is true:
+
+1. The user explicitly invoked `$implement-dev-plan [<feature-id>]`.
+2. The latest finalized same-conversation `$create-dev-plan` plan contains the handoff below, the user actually selected the host's "Implement this plan" action, and `$save-dev-plan` delegated execution with the resolved ID immediately after newly saving that plan or verifying its existing saved artifacts.
+
+```yaml
+execution_handoff:
+  skill: save-dev-plan
+  authorization: explicit-user-selection
+  automatic_trigger: implement-this-plan
+  continuation: implement-dev-plan
+```
+
+Do not infer selection or save success from the marker alone, and do not carry handoff authority into a new conversation or an ordinary implicit invocation. For a delegated invocation, use the resolved ID from `$save-dev-plan` as an explicit ID.
+
+Resolve the absolute common Git directory and find an ID under `<git-common-dir>/dev-plan-workflow/plans/` in this order:
 
 1. explicit ID;
 2. the most recently planned, saved, or run feature in the conversation;

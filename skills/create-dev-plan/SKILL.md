@@ -1,6 +1,6 @@
 ---
 name: create-dev-plan
-description: Interview the user and produce a standard or native-goal-loop development plan that separates a durable feature spec from a local implementation plan, with a save-only handoff. Use only when the user explicitly invokes "$create-dev-plan" in Plan mode.
+description: Interview the user and produce a standard or native-goal-loop development plan that separates a durable feature spec from a local implementation plan, with an approved save-then-implement handoff. Use only when the user explicitly invokes "$create-dev-plan" in Plan mode.
 ---
 
 # Create Dev Plan
@@ -98,7 +98,7 @@ execution_handoff:
   skill: save-dev-plan
   authorization: explicit-user-selection
   automatic_trigger: implement-this-plan
-  continuation: save-only
+  continuation: implement-dev-plan
 ---
 ```
 
@@ -113,4 +113,4 @@ For a goal loop, put durable target and guardrails in the tracked spec and the c
 
 Produce the decision-complete plan in the required Plan-mode format.
 
-End with a localized blockquote explaining that the host's "Implement this plan" action switches to Default mode and delegates only temporary Git-common-metadata persistence to `$save-dev-plan`. It does not authorize implementation, branch or worktree creation, or `$implement-dev-plan`. After the user explicitly invokes `$implement-dev-plan <id>`, only the feature spec is promoted into Git while the local plan remains in metadata until successful integration. When automatic handoff does not start, tell the user to invoke `$save-dev-plan` explicitly in Default mode. Save nothing while the user continues planning.
+End with a localized blockquote explaining that the host's "Implement this plan" action switches to Default mode, delegates temporary Git-common-metadata persistence to `$save-dev-plan`, and, after a successful save, continues to `$implement-dev-plan` with the resolved feature ID without another confirmation. This selection authorizes saving, branch and worktree creation, implementation, evaluation, independent review, and integration only for the latest finalized plan in the same conversation. When automatic handoff does not start, tell the user to invoke `$save-dev-plan` explicitly in Default mode and then invoke `$implement-dev-plan <id>` with the reported ID. Save or implement nothing while the user continues planning.

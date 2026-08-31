@@ -3,10 +3,11 @@
 사용자와 함께 계획을 확정한 뒤 구현·평가·독립 리뷰·통합을 수행하는 Codex 스킬
 모음이다. `skills-ko/`와 `skills/`의 `SKILL.md`는 의미와 강도가 같은 한글·영문
 대응본이며, `skills/` 쪽이 전역으로 설치된다. 어느 언어도 고정 편집 원본은 아니다.
-`$create-dev-plan`과 `$implement-dev-plan`은 명시적으로 호출한다.
-`$save-dev-plan`은 명시적으로 호출하거나, 확정 계획에서 "Implement this plan"을
-선택한 같은 대화의 save-only handoff로 활성화한다. 저장 후 구현은 시작하지 않으며
-`$implement-dev-plan <id>`를 사용자가 별도로 호출한다.
+`$create-dev-plan`은 명시적으로 호출한다. `$save-dev-plan`은 명시적으로 호출하거나,
+확정 계획에서 "Implement this plan"을 선택한 같은 대화의 handoff로 활성화한다.
+직접 호출한 `$save-dev-plan`은 저장만 하고, handoff 호출은 저장 성공 후 확정 ID로
+`$implement-dev-plan`까지 추가 확인 없이 이어진다. `$implement-dev-plan <id>`의 직접
+호출도 계속 지원한다.
 
 확정 결과는 `<git-common-dir>/dev-plan-workflow/plans/<id>/`의 `spec.md`, `plan.md`,
 `state.json`에 원자적으로 임시 저장된다. 구현을 시작하면 지속 의도인 feature spec만

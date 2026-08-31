@@ -1,6 +1,6 @@
 ---
 name: create-dev-plan
-description: 지속 기능 명세와 로컬 구현 계획을 분리한 표준 또는 네이티브 목표 루프 개발 계획을 인터뷰하고 저장 전용 handoff와 함께 작성합니다. 사용자가 Plan 모드에서 "$create-dev-plan"을 명시적으로 호출한 경우에만 사용합니다.
+description: 지속 기능 명세와 로컬 구현 계획을 분리한 표준 또는 네이티브 목표 루프 개발 계획을 인터뷰하고 승인된 저장 후 구현 handoff와 함께 작성합니다. 사용자가 Plan 모드에서 "$create-dev-plan"을 명시적으로 호출한 경우에만 사용합니다.
 ---
 
 # 개발 계획 만들기
@@ -98,7 +98,7 @@ execution_handoff:
   skill: save-dev-plan
   authorization: explicit-user-selection
   automatic_trigger: implement-this-plan
-  continuation: save-only
+  continuation: implement-dev-plan
 ---
 ```
 
@@ -113,4 +113,4 @@ goal loop의 지속 target과 guardrail은 tracked spec에, native objective와 
 
 요구되는 Plan 모드 형식으로 의사결정 완료 계획을 작성하세요.
 
-마지막 인용문에서 host의 "Implement this plan" 동작은 Default 모드로 전환한 뒤 `$save-dev-plan`에 Git 공용 metadata 임시 저장만 위임한다고 안내하세요. 이 선택은 구현, branch·worktree 생성 또는 `$implement-dev-plan` 실행을 승인하지 않습니다. 사용자가 이후 `$implement-dev-plan <id>`를 명시적으로 호출하면 feature spec만 Git에 승격되고 local plan은 통합 성공까지 metadata에 남습니다. 자동 handoff가 시작되지 않으면 Default 모드에서 `$save-dev-plan`을 명시적으로 호출하도록 안내하세요. 계속 계획하면 아무것도 저장하지 마세요.
+마지막 인용문에서 host의 "Implement this plan" 동작은 Default 모드로 전환한 뒤 `$save-dev-plan`에 Git 공용 metadata 임시 저장을 위임하고, 저장에 성공하면 확정된 feature ID로 `$implement-dev-plan`까지 추가 확인 없이 이어서 실행한다고 안내하세요. 이 선택은 같은 대화의 최신 확정 계획에 대해서만 저장, branch·worktree 생성, 구현, 평가, 독립 리뷰와 통합을 승인합니다. 자동 handoff가 시작되지 않으면 Default 모드에서 `$save-dev-plan`을 명시적으로 호출한 뒤 보고된 ID로 `$implement-dev-plan <id>`를 호출하도록 안내하세요. 계속 계획하면 아무것도 저장하거나 구현하지 마세요.

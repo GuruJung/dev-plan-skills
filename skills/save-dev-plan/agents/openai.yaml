@@ -1,6 +1,6 @@
 interface:
   display_name: "Save Dev Plan"
-  short_description: "Persist a development plan without implementing it"
+  short_description: "Persist plans and continue approved handoffs"
   default_prompt: "Use $save-dev-plan to persist the latest finalized development plan without implementing it."
 
 policy:

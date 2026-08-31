@@ -1,6 +1,6 @@
 ---
 name: implement-dev-plan
-description: 저장된 신규 형식의 지속 기능 명세와 로컬 구현 계획을 준비, 구현, 평가, 독립 리뷰, 통합하거나 중단된 구현을 진단하고 재개합니다. 사용자가 기능 ID를 선택적으로 포함해 "$implement-dev-plan"을 명시적으로 호출한 경우에만 사용합니다.
+description: 저장된 신규 형식의 지속 기능 명세와 로컬 구현 계획을 준비, 구현, 평가, 독립 리뷰, 통합하거나 중단된 구현을 진단하고 재개합니다. 사용자가 기능 ID를 선택적으로 포함해 "$implement-dev-plan"을 명시적으로 호출했거나 승인된 같은 대화의 `$save-dev-plan` handoff가 위임한 경우에만 사용합니다.
 ---
 
 # 개발 계획 구현
@@ -11,7 +11,22 @@ description: 저장된 신규 형식의 지속 기능 명세와 로컬 구현 �
 
 ## 기능 확인
 
-`$implement-dev-plan [<feature-id>]`를 명시적으로 호출한 경우에만 실행하세요. 절대 공용 Git 디렉터리를 확인하고 `<git-common-dir>/dev-plan-workflow/plans/`에서 다음 순서로 ID를 찾으세요.
+다음 중 하나일 때만 실행하세요.
+
+1. 사용자가 `$implement-dev-plan [<feature-id>]`를 명시적으로 호출했습니다.
+2. 같은 대화의 최신 확정 `$create-dev-plan` 계획에 아래 handoff가 있고, 사용자가 host의 "Implement this plan" 동작을 실제로 선택했으며, `$save-dev-plan`이 그 계획을 새로 저장했거나 기존 저장물과 동일함을 검증한 직후 확정 ID로 실행을 위임했습니다.
+
+```yaml
+execution_handoff:
+  skill: save-dev-plan
+  authorization: explicit-user-selection
+  automatic_trigger: implement-this-plan
+  continuation: implement-dev-plan
+```
+
+marker만으로 선택이나 저장 성공을 추정하지 말고, 새 대화나 일반 implicit invocation으로 handoff 권한을 이어가지 마세요. delegated invocation에서는 `$save-dev-plan`이 전달한 확정 ID를 explicit ID처럼 사용하세요.
+
+절대 공용 Git 디렉터리를 확인하고 `<git-common-dir>/dev-plan-workflow/plans/`에서 다음 순서로 ID를 찾으세요.
 
 1. 명시적인 ID
 2. 대화에서 가장 최근에 계획, 저장 또는 실행한 기능

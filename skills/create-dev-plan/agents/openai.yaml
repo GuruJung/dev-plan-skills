@@ -1,6 +1,6 @@
 interface:
   display_name: "Create Dev Plan"
-  short_description: "Create a decision-complete development plan"
+  short_description: "Create a plan with an implementation handoff"
   default_prompt: "Use $create-dev-plan to interview me and produce a decision-complete development plan."
 
 policy:

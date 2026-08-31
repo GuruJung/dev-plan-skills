@@ -1,11 +1,11 @@
 ---
 name: save-dev-plan
-description: Persist the latest finalized durable feature spec and local implementation plan into shared Git metadata without preparing or implementing them. Use only when the user explicitly invokes "$save-dev-plan" or an approved same-conversation `$create-dev-plan` save-only handoff delegates persistence.
+description: Persist the latest finalized durable feature spec and local implementation plan into shared Git metadata, then delegate implementation when an approved same-conversation `$create-dev-plan` handoff requests it. Use only when the user explicitly invokes "$save-dev-plan" or that handoff delegates persistence.
 ---
 
 # Save Dev Plan
 
-Save only one finalized feature's tracked spec and local plan. Explicit and handed-off invocations are both save-only. Never treat saving as implementation approval or invoke `$implement-dev-plan` directly.
+Save one finalized feature's tracked spec and local plan. An explicit `$save-dev-plan` invocation is save-only. An approved `$create-dev-plan` handoff delegates the same feature to `$implement-dev-plan` after saving succeeds. Never treat an ordinary save or the marker alone as implementation approval.
 
 Use the user's current conversation language for questions, status, and prose artifacts unless another language is requested. Preserve commands, identifiers, paths, enum values, and YAML or JSON keys exactly.
 
@@ -23,10 +23,12 @@ execution_handoff:
   skill: save-dev-plan
   authorization: explicit-user-selection
   automatic_trigger: implement-this-plan
-  continuation: save-only
+  continuation: implement-dev-plan
 ```
 
-Do not infer selection from the marker alone. The handoff does not survive a new conversation.
+When an existing plan has the same fields with `continuation: save-only`, continue to allow it as a legacy save-only handoff without entering implementation. Do not infer selection from the marker alone. The handoff does not survive a new conversation.
+
+For a `continuation: implement-dev-plan` handoff, before writing files, read `../implement-dev-plan/SKILL.md` relative to this SKILL.md and verify that its frontmatter `name` is `implement-dev-plan`. When the sibling is missing or invalid, do not search elsewhere or install it; stop without changes. Do not require the sibling for an explicit `$save-dev-plan` invocation or a legacy `save-only` handoff.
 
 ## Validate the finalized artifacts
 
@@ -46,7 +48,9 @@ When content is missing or incomplete, do not invent it. Ask the user to return 
 
 ## Persist the feature
 
-1. Reuse the finalized ID. If Git metadata, the new `spec_path`, a branch, or a registered worktree collides, append the next numeric suffix and update every feature-ID-bearing field and path consistently. Do not rewrite unrelated prose.
+On a `continuation: implement-dev-plan` handoff retry, regardless of whether save success was reported, inspect the finalized plan's proposed ID, its existing numeric-suffix metadata candidates, and only IDs reported as saved for this finalized plan earlier in the same conversation. Before reading a candidate, require every path component from the absolute Git common metadata directory through the candidate directory and every candidate artifact to be plain. When using a committed tracked spec, also require its contract path inside a registered worktree and every path component to be plain. Do not follow a symbolic link or other non-plain path; stop without changes as an unsafe conflict. Reuse an existing ID when exactly one complete destination has a state whose ID and paths, temporary or committed tracked spec, and local plan when present match the two finalized sections split with the same ID normalization and the new schema. When a terminal state or valid `integration.complete` permits a missing local plan, bind identity through the matching state and tracked spec plus the same-conversation finalized plan. When multiple destinations match or an ID previously reported for this finalized plan mismatches, do not create a suffix or new metadata; show the candidates or mismatch and wait for a recovery choice. When no destination matches, continue with ordinary collision handling below.
+
+1. When there is no reusable saved feature, use the finalized ID. If Git metadata, the new `spec_path`, a branch, or a registered worktree collides, append the next numeric suffix and update every feature-ID-bearing field and path consistently. Do not rewrite unrelated prose.
 2. Under `<git-common-dir>/dev-plan-workflow/plans/`, create a unique staging directory on the same filesystem as the destination. Do not change an existing destination without explicit overwrite approval.
 3. Save `Tracked Feature Spec` as standalone `spec.md` with this frontmatter. Do not reinterpret approved wording or add local execution information.
 
@@ -121,7 +125,8 @@ When content is missing or incomplete, do not invent it. Ask the user to return 
    ```
 
 7. Verify that all three staging artifacts are plain files and match the finalized content, then atomically rename the staging directory to the destination. On failure, do not create a partial destination; remove only agent-owned staging.
-8. Do not modify the main worktree, a branch, or the index, and do not implement, test, commit, or push.
-9. Report the saved ID, temporary spec and plan paths, and eventual `spec_path`. Show `$implement-dev-plan <id>` as the next manual command without invoking it.
+8. During the save stage itself, do not modify the main worktree, a branch, or the index, and do not implement, test, commit, or push.
+9. For an explicit `$save-dev-plan` invocation or a legacy `save-only` handoff, report the saved ID, temporary spec and plan paths, and eventual `spec_path`. Show `$implement-dev-plan <id>` as the next manual command without invoking it.
+10. For an approved handoff, only after newly saving or reusing a verified saved feature, immediately apply the sibling `$implement-dev-plan` contract as a delegated invocation with the resolved ID. Do not enter implementation after a save failure, mismatch, pending user choice, or failed sibling preflight. Do not request another confirmation between saving and implementation, and preserve every `$implement-dev-plan` safety stop and recovery rule.
 
 Never overwrite an existing saved feature without explicit user approval.

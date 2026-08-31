@@ -25,6 +25,10 @@
   이 파일에서 연결한 관련 기능 명세를 읽는다.
 - `$save-dev-plan`은 독립된 `spec.md`, `plan.md`와 schema-v2 `state.json`을 worktree나
   branch를 변경하지 않고 Git 공용 metadata에 원자적으로 저장한다.
+- host의 "Implement this plan" 선택은 같은 대화의 최신 확정 계획을 `$save-dev-plan`으로
+  저장하고, 저장에 성공한 확정 ID를 `$implement-dev-plan`에 넘겨 추가 확인 없이 구현을
+  이어가도록 승인한다. 직접 호출한 `$save-dev-plan`과 `continuation: save-only` 계획은
+  저장 전용으로 유지되며, 저장 실패나 불일치 뒤에는 구현을 시작하지 않는다.
 - `$implement-dev-plan`은 기능 명세만 승격하고 `Current Spec Impact`를 적용하며 로컬
   계획은 실행 산출물로만 사용한다.
 - current spec에 의미 변경을 적용할 때는 기존 내용을 포함한 전체 서술 언어를 해당
@@ -40,4 +44,5 @@
 
 이 절의 결정 근거는
 [`20260830-separate-specs-and-local-plans`](specs/20260830-separate-specs-and-local-plans/spec.md)와
-[`20260830-squash-merge-to-main`](specs/20260830-squash-merge-to-main/spec.md)이다.
+[`20260830-squash-merge-to-main`](specs/20260830-squash-merge-to-main/spec.md),
+[`20260831-chain-save-and-implement`](specs/20260831-chain-save-and-implement/spec.md)이다.
