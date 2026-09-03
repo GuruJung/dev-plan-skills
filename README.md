@@ -20,7 +20,6 @@ local plan은 Git metadata에 남아 실행과 재개에 사용되고 통합 smo
 동작의 source of truth이고, current spec은 명시된 coverage 안에서 현재 intent의 기준이다.
 current spec에 의미 변경을 적용할 때는 기존 내용을 포함한 문서 전체의 서술 언어를 해당
 feature spec의 주된 서술 언어와 맞춘다. `No change`에서는 언어 차이만으로 수정하지 않는다.
-기존 `docs/superpowers/plans/` 자료는 변경하거나 새 형식으로 옮기지 않는다.
 
 ## 스킬 작성 언어와 동기화
 
