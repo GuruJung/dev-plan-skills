@@ -21,6 +21,45 @@ local plan은 Git metadata에 남아 실행과 재개에 사용되고 통합 smo
 current spec에 의미 변경을 적용할 때는 기존 내용을 포함한 문서 전체의 서술 언어를 해당
 feature spec의 주된 서술 언어와 맞춘다. `No change`에서는 언어 차이만으로 수정하지 않는다.
 
+## 스킬 사용법
+
+먼저 이 저장소의 세 스킬을 전역으로 설치한다. 설치와 갱신 방법은
+[전역 설치](#전역-설치)를 참고한다. 아래 예시는 셸 명령이 아니라 Codex 대화에 입력하는
+프롬프트이며, `$`도 스킬 호출명의 일부다.
+
+| 스킬 | 호출 시점 | 역할과 결과 |
+|---|---|---|
+| `$create-dev-plan` | Plan mode에서 명시적으로 호출 | 저장소를 조사하고 필요한 결정을 질문한 뒤, 지속 기능 명세와 로컬 구현 계획으로 분리된 결정 완료 계획을 만든다. 계획 중에는 저장소를 변경하지 않는다. |
+| `$save-dev-plan` | 확정 계획을 저장만 할 때 Default mode에서 명시적으로 호출 | 최신 확정 계획을 Git 공용 metadata에 저장하고 feature ID를 알려 준다. 직접 호출만으로는 구현을 시작하지 않는다. |
+| `$implement-dev-plan <feature-id>` | 저장된 계획을 구현하거나 중단된 작업을 재개할 때 Default mode에서 명시적으로 호출 | 격리된 feature worktree에서 명세 승격, 구현, 평가, 독립 리뷰를 수행하고 검증된 결과를 `main`에 단일 squash commit으로 통합한다. |
+
+### 권장 자동 흐름
+
+Plan mode에서 원하는 변경을 설명하며 계획을 시작한다.
+
+```text
+$create-dev-plan README에 신규 사용자용 빠른 시작을 추가해줘.
+```
+
+질문에 답해 계획을 확정한 다음 호스트의 “Implement this plan” 동작을 선택한다. 호스트가
+Default mode로 전환하고, 같은 대화의 최신 계획을 `$save-dev-plan`으로 저장한 뒤 확정된
+feature ID로 `$implement-dev-plan`을 추가 확인 없이 이어서 실행한다. 저장에 실패하거나
+계획과 저장물이 일치하지 않으면 구현을 시작하지 않는다.
+
+### 수동 저장과 구현
+
+자동 handoff가 시작되지 않거나 계획을 먼저 저장만 하려면 Default mode에서 다음과 같이
+호출한다.
+
+```text
+$save-dev-plan
+$implement-dev-plan <feature-id>
+```
+
+첫 번째 호출이 보고한 `<feature-id>`를 두 번째 호출에 사용한다. 이미 시작한 기능을
+재개할 때도 같은 `$implement-dev-plan <feature-id>` 형식을 사용한다. 구현이 성공해도
+원격 저장소로 자동 push하지 않으며 feature branch와 worktree도 자동 삭제하지 않는다.
+
 ## 스킬 작성 언어와 동기화
 
 기존 tracked 스킬 쌍의 행동을 수정할 때는 번역 전에 두 대응 파일의 Git 상태와
