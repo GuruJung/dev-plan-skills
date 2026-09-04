@@ -70,20 +70,26 @@ assert_contains "$repo_root/AGENTS.md" \
   'mtime이 같거나 `A`, `D`, `R`, `U`, untracked 등 `M` 이외의 변경이 있으면'
 assert_contains "$repo_root/AGENTS.md" \
   '대응본을 저장한 뒤 mtime이나 Git 상태가 바뀌어도 다시 선정하지 않으며'
-assert_contains "$repo_root/README.md" \
+assert_contains "$repo_root/README-ko.md" \
   '어느 언어도 고정 편집 원본은 아니다.'
 assert_contains "$repo_root/README.md" \
+  'Neither language is a fixed editing source.'
+assert_contains "$repo_root/README-ko.md" \
   "stat -c '%y %n' -- skills-ko/<skill>/SKILL.md skills/<skill>/SKILL.md"
 assert_contains "$repo_root/README.md" \
-  '기록 명령은 번역이나 원본 선정을 수행하지 않으며'
+  "stat -c '%y %n' -- skills-ko/<skill>/SKILL.md skills/<skill>/SKILL.md"
+assert_contains "$repo_root/README-ko.md" \
+  '기록 명령은 번역하거나 원본을 선정하지 않는다.'
+assert_contains "$repo_root/README.md" \
+  'The recording command does not translate or select a source.'
 assert_absent "$repo_root/AGENTS.md" \
   '`skills-ko/<skill>/SKILL.md`가 스킬 동작을 정의하는 한글 기준 원본이다.'
 assert_absent "$repo_root/AGENTS.md" '한글 원본'
-assert_absent "$repo_root/README.md" \
+assert_absent "$repo_root/README-ko.md" \
   '`skills-ko/`의 `SKILL.md`가 편집 기준인 한글 원본이고'
-assert_absent "$repo_root/README.md" \
+assert_absent "$repo_root/README-ko.md" \
   '스킬의 행동을 수정할 때는 먼저 `skills-ko/<skill>/SKILL.md`에 의도를 한국어로'
-assert_absent "$repo_root/README.md" '한글 원본'
+assert_absent "$repo_root/README-ko.md" '한글 원본'
 
 # Planning infers a clear feature type and only asks between the two supported types when unclear.
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
@@ -132,8 +138,10 @@ assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'do not translate current spec even when its language differs'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
   '일부만 번역한 혼합 언어 문서를 만들거나'
+assert_contains "$repo_root/README-ko.md" \
+  '문서 전체의 서술 언어를 feature'
 assert_contains "$repo_root/README.md" \
-  '문서 전체의 서술 언어를 해당'
+  'align the prose language of the entire document with the'
 assert_contains "$repo_root/docs/dev-plans/current-spec.md" '# 현재 개발 의도'
 assert_absent "$repo_root/docs/dev-plans/current-spec.md" '# Current Development Intent'
 

@@ -44,16 +44,23 @@
 
 ## 사용자 문서
 
-- README는 전역 설치 후 세 스킬을 사용하는 전제와 각 스킬의 역할을 설명한다.
+- `README.md`는 영문 기본 문서이고 `README-ko.md`는 의미와 강도가 같은 한글 대응본이다.
+  두 문서는 서로 연결되며 구조, 명령, 경로, 식별자와 제약을 동일하게 유지한다.
+- 설치와 설치 확인, 빠른 시작, 세 스킬의 역할과 수동 흐름을 유지보수 상세보다 먼저
+  설명해 스킬을 설치하고 사용하는 독자를 우선한다.
 - 권장 자동 흐름은 Plan mode의 `$create-dev-plan`에서 시작해 host의 “Implement this plan”
-  선택으로 저장과 구현을 연속 실행한다.
-- 직접 호출한 `$save-dev-plan`은 저장 전용이며, 수동 흐름은 Default mode에서 저장 결과로
-  받은 feature ID를 `$implement-dev-plan <feature-id>`에 전달한다.
+  선택으로 저장과 구현을 연속 실행한다. 직접 호출한 `$save-dev-plan`은 저장 전용이며,
+  수동 흐름은 Default mode에서 저장 결과로 받은 feature ID를
+  `$implement-dev-plan <feature-id>`에 전달한다.
 - 구현은 검증된 결과를 로컬 `main`에 통합하지만 자동 push나 feature branch·worktree
   삭제는 수행하지 않는다는 실행 경계를 안내한다.
+- 고정 언어 원본은 두지 않는다. 기존 tracked README 쌍 중 안전하게 원본을 정할 수 있는
+  수정본을 기준으로 대응본을 번역하고, 원본 선정이 모호하거나 의미가 일치하지 않으면
+  임의로 통합하지 않는다.
 
 이 절들의 결정 근거는
 [`20260830-separate-specs-and-local-plans`](specs/20260830-separate-specs-and-local-plans/spec.md)와
 [`20260830-squash-merge-to-main`](specs/20260830-squash-merge-to-main/spec.md),
 [`20260831-chain-save-and-implement`](specs/20260831-chain-save-and-implement/spec.md),
-[`20260904-add-readme-skill-usage`](specs/20260904-add-readme-skill-usage/spec.md)이다.
+[`20260904-add-readme-skill-usage`](specs/20260904-add-readme-skill-usage/spec.md),
+[`20260904-bilingual-user-focused-readme`](specs/20260904-bilingual-user-focused-readme/spec.md)이다.
