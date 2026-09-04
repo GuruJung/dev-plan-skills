@@ -38,13 +38,16 @@ if LC_ALL=C.utf8 grep -qP '[\x{AC00}-\x{D7A3}]' "$english_readme"; then
 fi
 LC_ALL=C.utf8 grep -qP '[\x{AC00}-\x{D7A3}]' "$korean_readme" ||
   fail 'Korean README contains no Hangul text'
+if LC_ALL=C.utf8 grep -qP '[\x{AC00}-\x{D7A3}]' "$agents_file"; then
+  fail 'AGENTS.md contains Hangul text'
+fi
 
 assert_contains "$english_readme" '[Korean](README-ko.md)'
 assert_contains "$korean_readme" '[English](README.md)'
-assert_contains "$agents_file" '`README.md`는 영문, `README-ko.md`는 한글 대응본이며'
-assert_contains "$agents_file" '어느 언어도 고정 원본이 아니다.'
-assert_contains "$agents_file" '의도한 원본을 수정한 뒤 대응본을 번역하기 전에'
-assert_contains "$agents_file" '`tests/test-readme-sync.sh`를 통과시킨다.'
+assert_contains "$agents_file" '`README.md` is the English document and `README-ko.md` is its Korean counterpart.'
+assert_contains "$agents_file" 'Neither language is a fixed source.'
+assert_contains "$agents_file" 'after modifying the intended source and before translating the counterpart'
+assert_contains "$agents_file" 'then pass `tests/test-readme-sync.sh`.'
 
 assert_order "$english_readme" \
   '## Installation' \

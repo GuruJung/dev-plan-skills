@@ -1,17 +1,17 @@
-# 저장소 작업 언어 규칙
+# Repository Working Language Rules
 
-- 사용자와의 대화, 기능 계획, 상태 보고는 사용자가 다른 언어를 요청하지 않는 한 한국어로 작성한다.
-- `README.md`는 영문, `README-ko.md`는 한글 대응본이며 의미와 강도, 구조, 명령, 경로, 식별자와 제약이 같아야 한다. 어느 언어도 고정 원본이 아니다.
-- 기존 tracked README 쌍에서는 의도한 원본을 수정한 뒤 대응본을 번역하기 전에 두 파일의 `git status --short`와 파일시스템 mtime을 한 번 스냅샷한다. 정상 수정 후보는 정확히 ` M`, `M `, `MM` 상태인 파일이다. 한쪽만 후보이면 그 파일을 원본으로 삼고, 양쪽 모두 후보이면 mtime이 더 최신인 파일을 원본으로 삼는다.
-- 깨끗한 README 쌍은 동기화 대상이 아니다. mtime이 같거나 `A`, `D`, `R`, `U`, untracked 등 `M` 이외의 변경이 있으면 임의로 원본을 정하지 말고 중단하여 사용자의 명시적 선택을 받는다.
-- README 원본 선정은 해당 동기화 작업이 끝날 때까지 고정한다. 대응본을 저장한 뒤 상태나 mtime이 바뀌어도 다시 선정하지 않으며, 예상 밖 변경이 생기면 덮어쓰지 말고 중단한다.
-- README 대응본을 의미와 강도가 같도록 번역하고 명령, 경로, 식별자, enum 값, YAML/JSON 키는 원형을 유지한다. 전체 문서를 대조한 뒤 `tests/test-readme-sync.sh`를 통과시킨다. 이 테스트는 의미 검토를 대신하지 않는다.
-- `skills-ko/<skill>/SKILL.md`와 `skills/<skill>/SKILL.md`는 의미와 강도가 같은 한글·영문 대응본이며 어느 언어도 고정 원본이 아니다.
-- 기존 tracked 스킬 쌍의 행동을 수정할 때는 번역 전에 두 파일의 `git status --short`와 파일시스템 mtime을 한 번 스냅샷한다. 정상 수정 후보는 정확히 ` M`, `M `, `MM` 상태인 파일이다. 한쪽만 후보이면 그 파일을 원본으로 삼고, 양쪽 모두 후보이면 mtime이 더 최신인 파일을 원본으로 삼는다.
-- 깨끗한 쌍은 동기화 대상이 아니다. mtime이 같거나 `A`, `D`, `R`, `U`, untracked 등 `M` 이외의 변경이 있으면 임의로 원본을 정하지 말고 중단하여 사용자의 명시적 선택을 받는다.
-- 원본 선정 결과는 해당 동기화 작업이 끝날 때까지 고정한다. 대응본을 저장한 뒤 mtime이나 Git 상태가 바뀌어도 다시 선정하지 않으며, 원본 파일이나 관련 상태에 예상 밖 변경이 생기면 덮어쓰지 말고 중단한다.
-- 선정한 원본이 한글이면 대응하는 영문 파일을, 영문이면 대응하는 한글 파일을 의미와 강도가 같도록 번역한다. 명령, 경로, 식별자, enum 값, YAML/JSON 키는 원형을 유지한다.
-- `skills/` 아래 설치 산출물은 영어 ASCII 텍스트만 포함해야 한다. 한글 대응본이나 개발용 파일을 `skills/`에 복사하지 않는다.
-- 번역을 완료하고 두 문서를 대조한 뒤 `scripts/record-skill-sync.sh`를 실행하고, `scripts/check-skill-sync.sh`와 관련 테스트를 통과시킨다. 체크섬 기록은 번역을 대신하지 않는다.
-- `skills-ko/.sync-state.sha256`을 직접 편집하거나 삭제하지 않는다. 상태가 손상됐으면 Git에서 복구한 뒤 다시 기록한다.
-- 전역 설치본을 직접 수정하지 않는다. 저장소 원본을 변경하고 검증·통합한 다음 설치 스크립트로 갱신한다.
+- Write conversations with the user, feature plans, and status reports in Korean unless the user requests another language.
+- `README.md` is the English document and `README-ko.md` is its Korean counterpart. They must have the same meaning and strength, structure, commands, paths, identifiers, and constraints. Neither language is a fixed source.
+- For an existing tracked README pair, after modifying the intended source and before translating the counterpart, snapshot both files' `git status --short` output and filesystem mtimes once. A normal modification candidate is a file with exactly ` M`, `M `, or `MM` status. If only one file is a candidate, use it as the source; if both are candidates, use the file with the newer mtime as the source.
+- A clean README pair is not a synchronization target. If the mtimes are equal or either file has an `A`, `D`, `R`, `U`, untracked, or other non-`M` change, do not select a source arbitrarily; stop and obtain the user's explicit choice.
+- Keep the README source selection fixed until that synchronization task finishes. Do not select it again even if status or mtime changes after saving the counterpart; if an unexpected change occurs, stop rather than overwrite it.
+- Translate the README counterpart with the same meaning and strength, preserving commands, paths, identifiers, enum values, and YAML/JSON keys exactly. Compare the complete documents, then pass `tests/test-readme-sync.sh`. This test does not replace semantic review.
+- `skills-ko/<skill>/SKILL.md` and `skills/<skill>/SKILL.md` are Korean and English counterparts with the same meaning and strength. Neither language is a fixed source.
+- When modifying behavior in an existing tracked skill pair, snapshot both files' `git status --short` output and filesystem mtimes once before translation. A normal modification candidate is a file with exactly ` M`, `M `, or `MM` status. If only one file is a candidate, use it as the source; if both are candidates, use the file with the newer mtime as the source.
+- A clean pair is not a synchronization target. If the mtimes are equal or either file has an `A`, `D`, `R`, `U`, untracked, or other non-`M` change, do not select a source arbitrarily; stop and obtain the user's explicit choice.
+- Keep the source selection fixed until that synchronization task finishes. Do not select it again even if mtime or Git status changes after saving the counterpart; if the source file or related state changes unexpectedly, stop rather than overwrite it.
+- If the selected source is Korean, translate the corresponding English file; if it is English, translate the corresponding Korean file with the same meaning and strength. Preserve commands, paths, identifiers, enum values, and YAML/JSON keys exactly.
+- Installed artifacts under `skills/` must contain English ASCII text only. Do not copy Korean counterparts or development-only files into `skills/`.
+- After completing the translation and comparing both documents, run `scripts/record-skill-sync.sh`, then pass `scripts/check-skill-sync.sh` and the related tests. Recording checksums does not replace translation.
+- Do not edit or delete `skills-ko/.sync-state.sha256` directly. If the state is damaged, restore it from Git and record it again.
+- Do not edit globally installed copies directly. Change the repository sources, verify and integrate them, and then update the installed copies with the installation script.

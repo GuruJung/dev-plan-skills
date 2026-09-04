@@ -61,15 +61,15 @@ assert_path_absent() {
 
 # Repository guidance selects the authoritative side per modified pair without a fixed language.
 assert_contains "$repo_root/AGENTS.md" \
-  '`skills-ko/<skill>/SKILL.md`와 `skills/<skill>/SKILL.md`는 의미와 강도가 같은 한글·영문 대응본이며 어느 언어도 고정 원본이 아니다.'
+  '`skills-ko/<skill>/SKILL.md` and `skills/<skill>/SKILL.md` are Korean and English counterparts with the same meaning and strength. Neither language is a fixed source.'
 assert_contains "$repo_root/AGENTS.md" \
-  '정상 수정 후보는 정확히 ` M`, `M `, `MM` 상태인 파일이다.'
+  'A normal modification candidate is a file with exactly ` M`, `M `, or `MM` status.'
 assert_contains "$repo_root/AGENTS.md" \
-  '한쪽만 후보이면 그 파일을 원본으로 삼고, 양쪽 모두 후보이면 mtime이 더 최신인 파일을 원본으로 삼는다.'
+  'If only one file is a candidate, use it as the source; if both are candidates, use the file with the newer mtime as the source.'
 assert_contains "$repo_root/AGENTS.md" \
-  'mtime이 같거나 `A`, `D`, `R`, `U`, untracked 등 `M` 이외의 변경이 있으면'
+  'If the mtimes are equal or either file has an `A`, `D`, `R`, `U`, untracked, or other non-`M` change,'
 assert_contains "$repo_root/AGENTS.md" \
-  '대응본을 저장한 뒤 mtime이나 Git 상태가 바뀌어도 다시 선정하지 않으며'
+  'Do not select it again even if mtime or Git status changes after saving the counterpart;'
 assert_contains "$repo_root/README-ko.md" \
   '어느 언어도 고정 편집 원본은 아니다.'
 assert_contains "$repo_root/README.md" \
@@ -83,8 +83,8 @@ assert_contains "$repo_root/README-ko.md" \
 assert_contains "$repo_root/README.md" \
   'The recording command does not translate or select a source.'
 assert_absent "$repo_root/AGENTS.md" \
-  '`skills-ko/<skill>/SKILL.md`가 스킬 동작을 정의하는 한글 기준 원본이다.'
-assert_absent "$repo_root/AGENTS.md" '한글 원본'
+  '`skills-ko/<skill>/SKILL.md` is the Korean canonical source that defines skill behavior.'
+assert_absent "$repo_root/AGENTS.md" 'Korean source'
 assert_absent "$repo_root/README-ko.md" \
   '`skills-ko/`의 `SKILL.md`가 편집 기준인 한글 원본이고'
 assert_absent "$repo_root/README-ko.md" \
