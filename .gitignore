@@ -1,1 +1,13 @@
 .agents/
+.codex/
+.worktrees/
+
+# Local credentials and private configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks

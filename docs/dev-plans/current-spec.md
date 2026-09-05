@@ -6,6 +6,17 @@
 현재 의도에 대해서만 기준이 된다. 이 문서에 없다는 이유로 적용 범위 밖의 제약이
 취소되지는 않는다.
 
+## GitHub 저장소 운영
+
+- 공개 저장소는 `GuruJung/dev-plan-skills`이고 기본 브랜치는 `main`이다.
+- 개인 이메일과 홈 경로가 포함된 이전 이력은 별도 비공개 저장소
+  `GuruJung/dev-plan-skills-private-archive`에 보관한다. 공개 이력은 GitHub
+  `noreply` 이메일과 개인 정보가 없는 경로를 사용한다.
+- `main` 변경은 PR과 `Validation`, `Secret scan` 검사를 통과해야 하며,
+  최신 main 기준 검사, 선형 이력, 대화 해결을 요구한다. 관리자에게도 보호를 적용하고
+  강제 push와 브랜치 삭제를 금지한다. 필수 승인 리뷰 수는 0이다.
+- 이 GitHub 정책은 스킬의 로컬 통합 동작과 자동 push 금지 경계를 변경하지 않는다.
+
 ## 개발 계획 산출물
 
 - 기능 계획은 지속되는 `Tracked Feature Spec` 내용과 폐기 가능한
