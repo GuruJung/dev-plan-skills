@@ -36,6 +36,8 @@ Resolve the absolute common Git directory and find an ID under `<git-common-dir>
 
 Reject an unknown ID. Require `state.json` to have `schema_version` exactly `2` and `feature_type` equal to `standard` or `goal-loop`. For a nonterminal feature, require plain local `plan.md`, except that a plain `integration.complete` marker permits a missing plan for integration recovery below. Require either temporary `spec.md` or a committed tracked spec at the state's `spec_path`. When required new artifacts are missing or invalid, do not infer content or search other paths; stop without changes.
 
+Check `eval_required` and `smoke_required` in the plan and state. These independent booleans must agree across artifacts. When both fields are absent from existing schema-v2 artifacts, interpret both as `true` under the existing contract without weakening it retroactively. Stop without changes for a partially missing pair or mismatched types or values. When completion recovery permits a missing plan, compare the state policy with the marker's smoke mode.
+
 ## Prepare a planned feature
 
 When state is `planned`:
@@ -93,13 +95,13 @@ Treat a newly prepared feature with no implementation, eval, or review evidence 
 
 Treat Git as source of truth. Show metadata mismatches and repair them only after the user chooses a recovery action. Never discard, reset, or remove feature work without explicit approval.
 
-When `<git-common-dir>/dev-plan-workflow/integration.pending` exists, block other integrations and require the matching feature to choose smoke recovery or main rollback.
+When `<git-common-dir>/dev-plan-workflow/integration.pending` exists, block other integrations and require the matching feature to choose integration completion under the recorded policy or main rollback.
 
 ## Implement a standard feature
 
 Implement autonomously within the local plan while treating feature spec and current spec as authoritative intent. Ask when intent must be reinterpreted, an unsafe decision is required, or progress genuinely stalls.
 
-Run the full eval contract and record command, result, duration, feature HEAD, and timestamp in `eval-results.json`. Require a clean worktree and logical commits before authoritative review.
+Perform the applicable verification in the plan. For `eval_required: true`, run the full eval contract and record command, result, duration, feature HEAD, and timestamp in `eval-results.json`. For `false`, do not require this file; retain actual evidence such as manual or semantic review and the omission reason. Preserve mandatory repository checks and never relabel failure or unavailable environments as unnecessary. Reassess contract necessity if material new risks emerge. Require a clean worktree and logical commits before authoritative review.
 
 ## Run a native goal loop
 
@@ -109,32 +111,32 @@ When goal tools exist, query the active goal. Adopt it only when feature ID and 
 
 Start each experiment from clean baseline or current best checkpoint and change only the approved search space. Record measurement and guardrails, parameters, metric, duration, budget usage, and HEAD. Retain only valid improvements as best commits and restore failed or worse agent-owned changes to the best checkpoint. Never overwrite unexpected user or concurrent changes.
 
-Enforce every budget. When budget is exhausted before target, do not mark complete; require re-planning or goal pause, edit, or clear. When target and guardrails are reproducibly verified, mark the goal complete, report final token usage returned by the goal tool when a token budget exists, and continue with full feature eval, independent review, and integration.
+Enforce every budget. When budget is exhausted before target, do not mark complete; require re-planning or goal pause, edit, or clear. When target and guardrails are reproducibly verified, mark the goal complete, report final token usage returned by the goal tool when a token budget exists, and continue with applicable final verification, independent review, and integration.
 
 ## Bind results and run independent review
 
-Bind eval and review results to a clean feature HEAD and mark them stale after changes. For a goal loop, rerun full eval at the verified best checkpoint.
+Bind verification and review results to a clean feature HEAD and mark them stale after changes. For a goal loop, verify target, guardrails, and applicable final checks at the verified best checkpoint.
 
-After full eval passes, create one reviewer subagent with isolated implementation context and provide only:
+After completing applicable verification, create one reviewer subagent with isolated implementation context and provide only the following. Independent review still applies without a separate eval contract; never present absent results as passed.
 
 - tracked feature spec, relevant current spec, and acceptance criteria;
 - comparison ref and feature HEAD;
 - complete merge diff target;
-- eval results.
+- actual verification evidence and contract omission reasons, including eval results when applicable.
 
-The reviewer must work read-only and must not modify files, commit, push, post comments, or delegate. It must read applicable `AGENTS.md`, spec, current spec, and eval results, then inspect the complete diff from merge-base through feature HEAD, surrounding code for every changed path, relevant tests, and call sites. It must continue through the whole diff after finding the first issue and keep cited lines minimal and overlapping the reviewed diff.
+The reviewer must work read-only and must not modify files, commit, push, post comments, or delegate. It must read applicable root and scoped `AGENTS.md`, overrides and linked review guidance, spec, current spec, and actual verification evidence, then inspect the complete diff from merge-base through feature HEAD, surrounding code for every changed path, relevant tests, and call sites. It must continue through the whole diff after finding the first issue and keep cited lines minimal and overlapping the reviewed diff.
 
-Report a finding only when it has meaningful correctness, security, performance, or maintainability impact, is discrete and actionable, was introduced by this change, is demonstrated by a real scenario, and would probably be fixed by the author. Exclude speculation, pre-existing problems, intentional changes, and trivial style nits.
+Judge proportionately to the repository context and change risk, and examine actual defects beyond the plan checklist. For a finding based on a project rule, also cite the original guidance file and minimal line range. Report a finding only when it has meaningful correctness, security, performance, or maintainability impact, is discrete and actionable, was introduced by this change, is demonstrated by a real scenario, and would probably be fixed by the author. Exclude speculation, pre-existing problems, intentional changes, and trivial style nits.
 
-Order findings by severity and use `[P1] <imperative title> - path/to/file:line` with brief evidence. After findings, return an overall assessment, material test gaps or residual risk, and an explicit acceptance decision. P0 is a universal blocker, P1 urgent, P2 an ordinary defect, and P3 low impact. Accept only with no P0-P2. Fix P0-P2, rerun affected evals, and use the same reviewer for recheck during one uninterrupted review stage. Record P3 in `review.md` and state without blocking integration. If reviewer capability is unavailable, stop before integration.
+Order findings by severity and use `[P1] <imperative title> - path/to/file:line` with brief evidence. After findings, return an overall assessment, material test gaps or residual risk, and an explicit acceptance decision. P0 is a universal blocker, P1 urgent, P2 an ordinary defect, and P3 low impact. Accept only with no P0-P2. Fix P0-P2, rerun affected verification, and use the same reviewer for recheck during one uninterrupted review stage. Record P3 in `review.md` and state without blocking integration. If reviewer capability is unavailable, stop before integration.
 
 ## Revalidate main and build smoke
 
 Find the unique clean main worktree and fetch `origin/main` when configured. Fast-forward when behind and stop as `integration-blocked` when diverged. Rebase feature when main is not its ancestor and re-plan conflicts that change intent.
 
-When main changed after authoritative eval, rerun full eval and create a new reviewer when effective merge diff changed. Set `integration-ready`, `validated_feature_head`, and `validated_main_sha` only for a clean, fully evaluated, accepted HEAD.
+When main changed after authoritative verification, rerun or reassess applicable verification and create a new reviewer when effective merge diff changed. Set `integration-ready`, `validated_feature_head`, and `validated_main_sha` only for a clean, verified, accepted HEAD.
 
-Use latest successful eval durations and the plan threshold, default 60 seconds. Include every eval within the threshold as automatic smoke. Require at least one local, repeatable command without deployment or irreversible external side effects.
+Prepare the planned smoke contract only for `smoke_required: true`. Reuse commands based on latest successful eval durations or validate separate smoke commands before integration. Require at least one safe, locally repeatable command within the plan threshold (default 60 seconds), without deployment or irreversible external side effects. For `smoke_required: false`, do not create smoke; integrate after applicable verification and independent review without another user confirmation.
 
 ## Integrate
 
@@ -153,9 +155,11 @@ scripts/integrate-feature.sh \
   --smoke '<command>' [--smoke '<command>' ...]
 ```
 
-The helper verifies that every path component through the feature metadata directory and local plan is plain. It creates a squash commit whose tree is the validated feature tree, whose only parent is validated main, and whose subject is `<state-title> (<id>)`, then fast-forwards main to that commit. When `commit.gpgSign=true`, it also signs the squash commit and stops without changing main or pending metadata if signing or signature verification fails. New `integration.pending` and `integration.complete` markers allow only the five-field format containing validated main, validated feature HEAD, squash main SHA, and both worktrees. A legacy four-field marker stops as `recovery-required` without changing any ref or metadata.
+Pass `--smoke` to the `integrate-feature.sh` call above only for `smoke_required: true`. When the finalized plan says `false`, replace that call's `--smoke` arguments with `--skip-smoke`. Do not combine them.
 
-After every smoke passes, the helper atomically records `integration.complete`, removes local plan and the pending marker, and returns `integrated` while distinguishing validated feature HEAD as `feature` and squash main SHA as `head`. With a marker, when main is still validated main it may advance to the recorded squash commit and rerun smoke; when main is already the squash SHA it may verify that commit and rerun smoke. Rollback keeps or restores main at validated main and preserves local plan. Recovery-required before marker creation also preserves local plan. Use the same arguments with `--recover-pending smoke` or `--recover-pending rollback` for interrupted integration.
+The helper verifies that every path component through the feature metadata directory and local plan is plain. It creates a squash commit whose tree is the validated feature tree, whose only parent is validated main, and whose subject is `<state-title> (<id>)`, then fast-forwards main to that commit. When `commit.gpgSign=true`, it also signs the squash commit and stops without changing main or pending metadata if signing or signature verification fails. New `integration.pending` and `integration.complete` markers have six fields: validated main, validated feature HEAD, squash main SHA, both worktrees, and `required|skipped`. Interpret legacy five-field markers as `required`. A legacy four-field marker or invalid mode stops as `recovery-required` without changing any ref or metadata. A recovery call whose smoke mode differs from the marker also stops without changes; required smoke cannot be skipped.
+
+After every required smoke passes or the approved skip path succeeds, the helper atomically records `integration.complete`, removes local plan and the pending marker, and returns `integrated` and `smoke_status=passed|skipped` while distinguishing validated feature HEAD as `feature` and squash main SHA as `head`. Skipping reports `smoke_count=0` and retains clean-state, SHA, tree, concurrency, signing, and path checks. With only a pending marker, when main is still validated main, advance to the recorded squash commit and finish under the recorded policy; when main is already the squash SHA, verify that commit and finish under the same policy. A valid completion marker recovers cleanup without rerunning completed smoke. Rollback keeps or restores main at validated main and preserves local plan. Recovery-required before marker creation also preserves local plan. Use the same arguments with `--recover-pending finish` or `--recover-pending rollback` for interrupted integration. Legacy `--recover-pending smoke` remains available only for required smoke recovery.
 
 On `integrated`, atomically update state including `integrated_main_sha` and only then remove `integration.complete`. On re-entry with a completion marker, reproduce the result with the same helper call when Git and marker agree. Return to revalidation for `stale-main` or `not-fast-forward`; set `needs-replan` for `smoke-rolled-back`; block further integration until main recovery for `recovery-required`. Terminal state may omit local plan.
 

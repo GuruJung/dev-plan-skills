@@ -40,11 +40,16 @@ Require the latest finalized `$create-dev-plan` plan to contain:
 - `plan_path` equal to `<git-common-dir>/dev-plan-workflow/plans/<id>/plan.md`;
 - complete `Tracked Feature Spec` and `Local Implementation Plan` sections;
 - `Current Spec Impact`, user decisions, and semantic acceptance criteria in the tracked spec;
-- implementation approach, executable evals with success conditions, and an approved smoke threshold in the local plan;
-- an automatic smoke contract for every eval and at least one eval expected within the threshold;
+- implementation approach, independent `eval_required` and `smoke_required` booleans, reasons for necessity or omission, and suitable verification methods in the local plan;
+- executable commands with success conditions when eval is required;
+- safe, repeatable commands and a time threshold (default 60 seconds), with evidence or reasonable expectation of execution within the threshold when smoke is required;
 - for a goal loop, durable target and guardrails plus a complete local `Goal Contract`.
 
-When content is missing or incomplete, do not invent it. Ask the user to return to Plan mode and invoke `$create-dev-plan` again.
+Require both booleans in new plans. When both fields are absent from existing schema-v2 artifacts and their approved plan, interpret both as `true` under the existing contract; do not weaken it retroactively. Stop without changes for a partially missing pair, non-boolean values, or a plan/state mismatch. Check this interpretation and consistency when reusing saved artifacts as well.
+
+Validate only necessary contracts. Do not require or invent a separate eval contract when eval is unnecessary, or a smoke contract and `smoke_threshold_seconds` when smoke is unnecessary. Retain mandatory repository checks and semantic acceptance criteria; never relabel failure or missing execution as success.
+
+When required content is missing or incomplete, do not invent it. Ask the user to return to Plan mode and invoke `$create-dev-plan` again.
 
 ## Persist the feature
 
@@ -73,11 +78,15 @@ On a `continuation: implement-dev-plan` handoff retry, regardless of whether sav
    base_branch: main
    spec_path: docs/dev-plans/specs/<id>/spec.md
    current_spec_path: docs/dev-plans/current-spec.md
+   eval_required: true
+   smoke_required: true
    smoke_threshold_seconds: 60
    ---
    ```
 
-5. Write this `state.json` in staging:
+   Preserve the finalized plan values for booleans and threshold. Omit the threshold when smoke is unnecessary.
+
+5. Write this `state.json` in staging, matching both booleans to the finalized plan:
 
    ```json
    {
@@ -85,6 +94,8 @@ On a `continuation: implement-dev-plan` handoff retry, regardless of whether sav
      "id": "<id>",
      "title": "<title>",
      "feature_type": "<standard-or-goal-loop>",
+     "eval_required": true,
+     "smoke_required": true,
      "status": "planned",
      "base_branch": "main",
      "branch": "feature/<id>",

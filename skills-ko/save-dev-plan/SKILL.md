@@ -40,11 +40,16 @@ execution_handoff:
 - `<git-common-dir>/dev-plan-workflow/plans/<id>/plan.md`인 `plan_path`
 - 완전한 `Tracked Feature Spec`과 `Local Implementation Plan`
 - tracked spec의 `Current Spec Impact`, 사용자 결정 사항과 의미 중심 승인 기준
-- local plan의 구현 접근법, 성공 조건이 있는 실행 가능한 eval과 승인된 smoke threshold
-- 모든 eval에 적용되는 자동 smoke 계약과 기준 시간 이내 실행이 예상되는 eval 하나 이상
+- local plan의 구현 접근법, 독립적인 `eval_required`·`smoke_required` boolean, 필요성·생략 이유와 적절한 검증 방법
+- eval이 필요하면 성공 조건이 있는 실행 가능한 명령
+- smoke가 필요하면 안전하고 반복 가능한 명령과 기준 시간(기본 60초), 기준 시간 이내 실행의 근거 또는 합리적인 예상
 - goal loop이면 tracked target·guardrail과 local plan의 완전한 `Goal Contract`
 
-내용이 없거나 불완전하면 만들어내지 말고 Plan 모드에서 `$create-dev-plan`을 다시 호출하도록 요청하세요.
+신규 계획에는 두 boolean을 모두 요구하세요. 기존 schema-v2 저장물과 그 승인 계획에 두 필드가 모두 없으면 기존 계약대로 둘 다 `true`로 해석하며 소급 완화하지 마세요. 한쪽 필드만 있거나 boolean이 아니거나 계획·state 값이 다르면 무변경 중단하세요. 기존 저장물 재사용 시에도 이 해석과 일치성을 확인하세요.
+
+필요한 계약만 검증하세요. eval이 불필요하면 별도 eval 계약을, smoke가 불필요하면 smoke 계약과 `smoke_threshold_seconds`를 요구하거나 만들어 넣지 마세요. 저장소 필수 검사와 의미 중심 승인 기준은 유지하고 실패·미실행을 성공으로 바꾸지 마세요.
+
+필요한 내용이 없거나 불완전하면 만들어내지 말고 Plan 모드에서 `$create-dev-plan`을 다시 호출하도록 요청하세요.
 
 ## 기능 저장
 
@@ -73,11 +78,15 @@ execution_handoff:
    base_branch: main
    spec_path: docs/dev-plans/specs/<id>/spec.md
    current_spec_path: docs/dev-plans/current-spec.md
+   eval_required: true
+   smoke_required: true
    smoke_threshold_seconds: 60
    ---
    ```
 
-5. 다음 `state.json`을 staging 디렉터리에 작성하세요.
+   boolean과 threshold는 확정 계획의 값을 그대로 저장하세요. smoke가 불필요하면 threshold를 생략하세요.
+
+5. 다음 `state.json`을 staging 디렉터리에 작성하고 두 boolean을 확정 계획과 일치시키세요.
 
    ```json
    {
@@ -85,6 +94,8 @@ execution_handoff:
      "id": "<id>",
      "title": "<title>",
      "feature_type": "<standard-or-goal-loop>",
+     "eval_required": true,
+     "smoke_required": true,
      "status": "planned",
      "base_branch": "main",
      "branch": "feature/<id>",

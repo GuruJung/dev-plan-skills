@@ -26,7 +26,7 @@
 - 이 파일은 현재 유효한 의도만 담는다. 시간순 기록을 누적하지 않고 폐기된 문장을
   교체하거나 제거한다.
 - 로컬 계획은 `<git-common-dir>/dev-plan-workflow/plans/<id>/plan.md`에 추적되지 않은
-  상태로 유지하며 성공적인 통합 smoke 뒤에만 삭제한다.
+  상태로 유지하며 통합과 적용되는 사후 검증의 성공을 완료 marker로 기록한 뒤에만 삭제한다.
 - source code와 tests는 실제 동작의 source of truth이다. 이 문서는 명시된 적용 범위
   안에서 의도의 기준이다.
 
@@ -34,6 +34,12 @@
 
 - `$create-dev-plan`은 이 파일을 먼저 읽고 코드를 조사하며, 결정 이유가 필요할 때만
   이 파일에서 연결한 관련 기능 명세를 읽는다.
+- 일반적인 조사·인터뷰는 native Plan 모드에 따르며 프로젝트별 리뷰 지침과 변경에 관련된
+  정확성·보안·성능·유지보수성, 회귀·경계 사례를 승인 기준과 검증 방법에 반영한다.
+- eval과 smoke의 필요성은 저장소 필수 검사와 실제 위험·유용성에 따라 각각 판단하고
+  이유를 기록한다. 계약이 없어도 의미 중심 승인 기준, 적절한 검증과 독립 리뷰를 유지한다.
+  검사 실패나 환경 부족을 계약 생략으로 통과시키지 않는다. smoke가 불필요하면 추가
+  사용자 확인 없이 통합·완료한다. 목표 루프의 목표·guardrail 측정과 예산은 유지한다.
 - `$save-dev-plan`은 독립된 `spec.md`, `plan.md`와 schema-v2 `state.json`을 worktree나
   branch를 변경하지 않고 Git 공용 metadata에 원자적으로 저장한다.
 - host의 "Implement this plan" 선택은 같은 대화의 최신 확정 계획을 `$save-dev-plan`으로
@@ -48,7 +54,8 @@
 - 독립 리뷰와 재검증을 통과한 기능은 검증된 main을 유일한 부모로 하고 검증된 feature
   tree를 그대로 담는 단일 squash commit으로 main에 통합한다. commit 제목은
   `<기능 제목> (<feature-id>)`이며 feature HEAD와 통합된 main SHA를 별도로 기록한다.
-- 성공적인 smoke는 로컬 계획을 삭제하기 전에 지속 completion marker를 기록한다.
+- 통합과 적용되는 사후 검증이 성공하면 로컬 계획을 삭제하기 전에 지속 completion marker를 기록한다.
+  smoke 생략 경로도 중단 후 복구하며 기존 필수 smoke를 복구 중 생략할 수 없다.
   state를 terminal로 갱신한 뒤에만 marker를 제거한다.
 - 현재 의도가 바뀌지 않는 기능도 보존할 불변조건과 승인 기준을 기능 명세에 기록하지만,
   provenance나 timestamp만을 위해 이 파일을 수정하지 않는다.
@@ -74,4 +81,5 @@
 [`20260830-squash-merge-to-main`](specs/20260830-squash-merge-to-main/spec.md),
 [`20260831-chain-save-and-implement`](specs/20260831-chain-save-and-implement/spec.md),
 [`20260904-add-readme-skill-usage`](specs/20260904-add-readme-skill-usage/spec.md),
-[`20260904-bilingual-user-focused-readme`](specs/20260904-bilingual-user-focused-readme/spec.md)이다.
+[`20260904-bilingual-user-focused-readme`](specs/20260904-bilingual-user-focused-readme/spec.md),
+[`20260915-streamline-planning-and-optional-validation`](specs/20260915-streamline-planning-and-optional-validation/spec.md)이다.

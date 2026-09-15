@@ -103,29 +103,20 @@ assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
 assert_absent "$repo_root/skills-ko/create-dev-plan" '`other`'
 assert_absent "$repo_root/skills/create-dev-plan" '`other`'
 
-# Planning and execution agree on the one-minute automatic smoke policy.
-assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  '기본값이 60초인 자동 smoke 기준 시간'
-assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  'smoke_threshold_seconds: 60'
-assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '계획 threshold, 기본 60초를 사용해'
-assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'automatic smoke threshold, defaulting to 60 seconds;'
-assert_contains "$repo_root/skills/create-dev-plan/SKILL.md" \
-  'smoke_threshold_seconds: 60'
-assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'plan threshold, default 60 seconds.'
-assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
-  'eval별 선택을 묻거나 기록하지 마세요.'
-assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'Include every eval within the threshold as automatic smoke.'
-assert_absent "$repo_root/skills" 'smoke_threshold_seconds: 300'
-assert_absent "$repo_root/skills" 'default 300 seconds'
-assert_absent "$repo_root/skills" 'defaulting to 300 seconds'
-assert_absent "$repo_root/skills-ko" 'smoke_threshold_seconds: 300'
-assert_absent "$repo_root/skills-ko" '기본값이 300초'
-assert_absent "$repo_root/skills-ko" '기본 300초'
+# New plans expose independent validation policies; smoke keeps its one-minute default.
+for language_dir in skills skills-ko; do
+  for skill in create-dev-plan save-dev-plan; do
+    assert_contains "$repo_root/$language_dir/$skill/SKILL.md" 'eval_required: true'
+    assert_contains "$repo_root/$language_dir/$skill/SKILL.md" 'smoke_required: true'
+    assert_contains "$repo_root/$language_dir/$skill/SKILL.md" 'smoke_threshold_seconds: 60'
+  done
+  assert_contains "$repo_root/$language_dir/save-dev-plan/SKILL.md" '"eval_required": true'
+  assert_contains "$repo_root/$language_dir/save-dev-plan/SKILL.md" '"smoke_required": true'
+  assert_contains "$repo_root/$language_dir/implement-dev-plan/SKILL.md" '--skip-smoke'
+  assert_contains "$repo_root/$language_dir/implement-dev-plan/SKILL.md" '--recover-pending finish'
+done
+assert_absent "$repo_root/skills/create-dev-plan" 'Plan only. Do not write files'
+assert_absent "$repo_root/skills/implement-dev-plan" 'Include every eval within the threshold as automatic smoke.'
 
 # Current spec follows the feature-spec prose language only when current intent changes.
 assert_contains "$repo_root/skills-ko/create-dev-plan/SKILL.md" \
@@ -267,7 +258,7 @@ assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'scripts/promote-spec.sh'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  'smoke가 모두 통과하면 helper는 `integration.complete` marker를 원자적으로 기록한 뒤 local plan'
+  'helper는 `integration.complete` marker를 원자적으로 기록한 뒤 local plan'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'atomically records `integration.complete`, removes local plan and the pending marker'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
@@ -283,9 +274,9 @@ assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
   'whose subject is `<state-title> (<id>)`'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
-  '기존 4필드 marker는 어느 ref나 metadata도 변경하지 않고'
+  '기존 4필드나 잘못된 방식은 어느 ref나 metadata도 변경하지 않고'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \
-  'A legacy four-field marker stops as `recovery-required`'
+  'A legacy four-field marker or invalid mode stops as `recovery-required`'
 assert_contains "$repo_root/skills-ko/implement-dev-plan/SKILL.md" \
   '`commit.gpgSign=true`이면 squash commit도 서명하며'
 assert_contains "$repo_root/skills/implement-dev-plan/SKILL.md" \

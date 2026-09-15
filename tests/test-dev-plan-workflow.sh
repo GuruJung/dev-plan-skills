@@ -205,9 +205,9 @@ assert_absent "$metadata_dir/integration.pending"
 [[ -f "$temporary_dir/integration.complete" && ! -L "$temporary_dir/integration.complete" ]] ||
   fail 'successful integration did not retain a plain completion marker'
 mapfile -t completion_values <"$temporary_dir/integration.complete"
-[[ ${#completion_values[@]} == 5 && ${completion_values[0]} == "$expected_main" &&
+[[ ${#completion_values[@]} == 6 && ${completion_values[0]} == "$expected_main" &&
    ${completion_values[1]} == "$expected_feature" &&
-   ${completion_values[2]} == "$integrated_head" ]] ||
+   ${completion_values[2]} == "$integrated_head" && ${completion_values[5]} == required ]] ||
   fail 'successful integration wrote an invalid completion marker'
 $integrator \
   --metadata-dir "$metadata_dir" \
@@ -451,5 +451,157 @@ expect_failure 'integrator followed a feature metadata symlink' \
 [[ -f "$outside_metadata/plan.md" ]] || fail 'symlink failure removed the external plan'
 [[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] ||
   fail 'symlink failure changed main'
+
+# Exercise explicit smoke omission through the same integration safety gates.
+run_integration() {
+  "$integrator" --metadata-dir "$metadata_dir" --feature-id "$feature_id" \
+    --main-worktree "$main_root" --feature-worktree "$feature_root" \
+    --expected-main "$expected_main" --expected-feature "$expected_feature" \
+    --feature-title "$feature_title" --main-branch main "$@"
+}
+
+expect_status() {
+  local expected=$1 actual=0
+  shift
+  "$@" >"$test_root/integration.output" 2>&1 || actual=$?
+  [[ $actual == "$expected" ]] || {
+    cat "$test_root/integration.output" >&2
+    fail "expected status $expected, got $actual"
+  }
+}
+
+prepare_pending() {
+  local policy=$1
+  local tree
+  tree=$(git -C "$feature_root" rev-parse "$expected_feature^{tree}")
+  squash_head=$(git -C "$main_root" commit-tree "$tree" -p "$expected_main" -m "$squash_subject")
+  printf '%s\n' "$expected_main" "$expected_feature" "$squash_head" \
+    "$main_root" "$feature_root" >"$metadata_dir/integration.pending"
+  if [[ "$policy" != legacy ]]; then
+    printf '%s\n' "$policy" >>"$metadata_dir/integration.pending"
+  fi
+}
+
+make_integration_case integration-skip
+expect_status 64 run_integration
+expect_status 64 run_integration --skip-smoke --smoke true
+expect_status 64 run_integration --recover-pending smoke --skip-smoke
+assert_absent "$metadata_dir/integration.pending"
+assert_absent "$metadata_dir/integration.lock"
+expect_status 0 run_integration --skip-smoke
+grep -Fq 'smoke_count=0 smoke_status=skipped' "$test_root/integration.output" ||
+  fail 'skipped smoke was reported as executed'
+integrated_head=$(git -C "$main_root" rev-parse HEAD)
+[[ $(git -C "$main_root" rev-list --parents -n 1 "$integrated_head") == \
+   "$integrated_head $expected_main" ]] || fail 'skipped smoke did not create a single squash'
+[[ $(git -C "$main_root" rev-parse HEAD^{tree}) == \
+   $(git -C "$feature_root" rev-parse HEAD^{tree}) ]] || fail 'skipped smoke changed feature tree'
+[[ $(git -C "$feature_root" rev-parse HEAD) == "$expected_feature" ]] ||
+  fail 'skipped smoke changed feature HEAD'
+assert_absent "$temporary_dir/plan.md"
+assert_absent "$metadata_dir/integration.pending"
+mapfile -t completed <"$temporary_dir/integration.complete"
+[[ ${#completed[@]} == 6 && ${completed[5]} == skipped ]] ||
+  fail 'skipped smoke did not persist its policy'
+expect_status 31 run_integration --smoke true
+expect_status 0 run_integration --skip-smoke
+grep -Fq 'smoke_count=0 smoke_status=skipped recovered=true' "$test_root/integration.output" ||
+  fail 'skipped completion recovery lost the smoke result'
+
+# Both recovery names finish required smoke; only finish handles skipped smoke.
+# Legacy five-field pending markers remain required and completion can be retried without reruns.
+for policy in skipped required legacy; do
+  for phase in before-advance after-advance after-complete after-plan-cleanup; do
+    make_integration_case "integration-recover-$policy-$phase"
+    prepare_pending "$policy"
+    if [[ "$phase" != before-advance ]]; then
+      git -C "$main_root" merge --ff-only "$squash_head" >/dev/null
+    fi
+    if [[ "$phase" == after-complete || "$phase" == after-plan-cleanup ]]; then
+      cp "$metadata_dir/integration.pending" "$temporary_dir/integration.complete"
+    fi
+    if [[ "$phase" == after-plan-cleanup ]]; then
+      rm "$temporary_dir/plan.md"
+    fi
+    smoke_args=(--smoke 'test -f feature.txt')
+    expected_smoke_status=passed
+    if [[ "$policy" == skipped ]]; then
+      smoke_args=(--skip-smoke)
+      expected_smoke_status=skipped
+    elif [[ -f "$temporary_dir/integration.complete" ]]; then
+      # This would fail if a completed smoke were accidentally rerun.
+      smoke_args=(--smoke false)
+    fi
+    expect_status 0 run_integration --recover-pending finish "${smoke_args[@]}"
+    [[ $(git -C "$main_root" rev-parse HEAD) == "$squash_head" ]] ||
+      fail 'recovery did not use the recorded squash'
+    grep -Fq "smoke_status=$expected_smoke_status" "$test_root/integration.output" ||
+      fail 'recovery reported the wrong smoke status'
+    assert_absent "$temporary_dir/plan.md"
+    assert_absent "$metadata_dir/integration.pending"
+    expect_status 0 run_integration "${smoke_args[@]}"
+  done
+done
+
+# Policy mismatch and malformed markers leave refs and all metadata untouched, even before locking.
+for policy in required legacy skipped invalid; do
+  for kind in pending complete; do
+    make_integration_case "integration-mismatch-$policy-$kind"
+    prepare_pending "$policy"
+    marker=$metadata_dir/integration.pending
+    if [[ "$kind" == complete ]]; then
+      git -C "$main_root" merge --ff-only "$squash_head" >/dev/null
+      mv "$marker" "$temporary_dir/integration.complete"
+      marker=$temporary_dir/integration.complete
+    fi
+    cp "$marker" "$test_root/marker-before"
+    before_head=$(git -C "$main_root" rev-parse HEAD)
+    smoke_args=(--skip-smoke)
+    [[ "$policy" != skipped ]] || smoke_args=(--smoke true)
+    expect_status 31 run_integration --recover-pending finish "${smoke_args[@]}"
+    cmp "$marker" "$test_root/marker-before" || fail 'mismatch changed the marker'
+    [[ $(git -C "$main_root" rev-parse HEAD) == "$before_head" ]] || fail 'mismatch moved main'
+    [[ -f "$temporary_dir/plan.md" ]] || fail 'mismatch removed local plan'
+    assert_absent "$metadata_dir/integration.lock"
+  done
+done
+
+# Skipped pending integration still supports rollback without smoke options.
+make_integration_case integration-skip-rollback
+prepare_pending skipped
+git -C "$main_root" merge --ff-only "$squash_head" >/dev/null
+expect_status 30 run_integration --recover-pending rollback
+[[ $(git -C "$main_root" rev-parse HEAD) == "$expected_main" ]] || fail 'skip rollback moved main'
+[[ -f "$temporary_dir/plan.md" ]] || fail 'skip rollback removed the local plan'
+assert_absent "$metadata_dir/integration.pending"
+
+for condition in dirty-main dirty-feature stale-main stale-feature signing symlink; do
+  make_integration_case "integration-skip-$condition"
+  expected_status=22
+  case "$condition" in
+    dirty-main) printf 'untracked\n' >"$main_root/untracked.txt" ;;
+    dirty-feature) printf 'dirty\n' >>"$feature_root/README.md" ;;
+    stale-main)
+      git -C "$main_root" commit --allow-empty -qm 'Concurrent main change'
+      expected_status=20 ;;
+    stale-feature) git -C "$feature_root" commit --allow-empty -qm 'Concurrent feature change' ;;
+    signing)
+      git -C "$main_root" config commit.gpgSign true
+      git -C "$main_root" config gpg.program /bin/false
+      expected_status=31 ;;
+    symlink)
+      outside_metadata=$test_root/skip-outside-metadata
+      mv "$temporary_dir" "$outside_metadata"
+      ln -s "$outside_metadata" "$temporary_dir" ;;
+  esac
+  before_head=$(git -C "$main_root" rev-parse HEAD)
+  before_feature=$(git -C "$feature_root" rev-parse HEAD)
+  expect_status "$expected_status" run_integration --skip-smoke
+  [[ $(git -C "$main_root" rev-parse HEAD) == "$before_head" ]] || fail 'skip failure moved main'
+  [[ $(git -C "$feature_root" rev-parse HEAD) == "$before_feature" ]] || fail 'skip failure moved feature'
+  [[ -f "$temporary_dir/plan.md" ]] || fail 'skip failure removed local plan'
+  assert_absent "$metadata_dir/integration.pending"
+  assert_absent "$temporary_dir/integration.complete"
+done
 
 printf 'All dev plan workflow tests passed.\n'

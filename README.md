@@ -3,14 +3,14 @@
 [Korean](README-ko.md)
 
 Dev Plan Skills is a set of Codex skills for turning an agreed development plan into an
-implemented, evaluated, independently reviewed, and integrated change. It keeps durable
+implemented, verified, independently reviewed, and integrated change. It keeps durable
 feature intent in Git while keeping short-lived implementation details in local Git metadata.
 
 The workflow provides three skills:
 
 - `$create-dev-plan` interviews you and produces a decision-complete plan.
 - `$save-dev-plan` saves a finalized plan without implementing it when called directly.
-- `$implement-dev-plan` implements, evaluates, reviews, and integrates a saved plan.
+- `$implement-dev-plan` implements, verifies, reviews, and integrates a saved plan.
 
 ## Installation
 
@@ -48,7 +48,7 @@ fails or the saved artifacts do not match the plan.
 |---|---|---|
 | `$create-dev-plan` | Explicitly in Plan mode | Inspects the repository, resolves decisions with you, and separates a durable feature spec from a local implementation plan. It does not change the repository while planning. |
 | `$save-dev-plan` | Explicitly in Default mode when you only want to save | Saves the latest finalized plan in common Git metadata and reports its feature ID. A direct invocation does not start implementation. |
-| `$implement-dev-plan <feature-id>` | Explicitly in Default mode to implement or resume | Uses an isolated feature worktree to promote the spec, implement the plan, run evaluations and independent review, and integrate the verified tree into `main` as one squash commit. |
+| `$implement-dev-plan <feature-id>` | Explicitly in Default mode to implement or resume | Uses an isolated feature worktree to promote the spec, implement the plan, run applicable verification and independent review, and integrate the verified tree into `main` as one squash commit. |
 
 ### Manual save and implementation
 
@@ -64,13 +64,21 @@ Use the `<feature-id>` reported by the first invocation in the second invocation
 `$implement-dev-plan <feature-id>` form to resume interrupted work. A successful implementation
 does not automatically `push` or delete the feature branch or worktree.
 
+Eval and post-integration smoke contracts are created independently, only when needed. The agent
+assesses mandatory repository checks, actual change risk, and verification usefulness, then records
+the reasons and suitable verification methods in the plan. Omitting contracts retains acceptance
+criteria and independent review; failed checks or unavailable environments never count as success.
+When smoke is unnecessary, integration and completion require no additional user confirmation.
+Planning incorporates relevant project review rules, regressions, and edge cases; independent
+review examines the entire change.
+
 ## Workflow artifacts
 
 Finalized plans are saved atomically under
 `<git-common-dir>/dev-plan-workflow/plans/<id>/` as `spec.md`, `plan.md`, and `state.json`.
 When implementation starts, only the durable feature spec is promoted to
 `docs/dev-plans/specs/<id>/spec.md` and committed. The local implementation plan remains in Git
-metadata for execution and recovery, then is deleted only after a successful integration smoke.
+metadata for execution and recovery, then is deleted only after integration and applicable post-checks succeed and a completion marker records that success.
 
 `docs/dev-plans/current-spec.md` normalizes current intent introduced or changed by the new
 workflow. It is not a chronological archive or a merger of old specs. Source code and tests are
