@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-Dev Plan Skills는 사용자와 함께 확정한 개발 계획을 구현·평가·독립 리뷰·통합까지
+Dev Plan Skills는 사용자와 함께 확정한 개발 계획을 구현·검증·독립 리뷰·통합까지
 이어 주는 Codex 스킬 모음이다. 지속되는 기능 의도는 Git에 보존하고, 단기 구현 세부는
 로컬 Git metadata에만 유지한다.
 
@@ -10,7 +10,7 @@ Dev Plan Skills는 사용자와 함께 확정한 개발 계획을 구현·평가
 
 - `$create-dev-plan`은 사용자를 인터뷰해 결정 완료 계획을 만든다.
 - `$save-dev-plan`을 직접 호출하면 확정 계획을 구현하지 않고 저장한다.
-- `$implement-dev-plan`은 저장된 계획을 구현·평가·리뷰·통합한다.
+- `$implement-dev-plan`은 저장된 계획을 구현·검증·리뷰·통합한다.
 
 ## 설치
 
@@ -47,7 +47,7 @@ $create-dev-plan <describe the change>
 |---|---|---|
 | `$create-dev-plan` | Plan mode에서 명시적으로 호출 | 저장소를 조사하고 사용자와 결정을 확정하며, 지속 기능 명세와 로컬 구현 계획을 분리한다. 계획 중에는 저장소를 변경하지 않는다. |
 | `$save-dev-plan` | 계획을 저장만 하려면 Default mode에서 명시적으로 호출 | 최신 확정 계획을 Git 공용 metadata에 저장하고 feature ID를 알려 준다. 직접 호출만으로는 구현을 시작하지 않는다. |
-| `$implement-dev-plan <feature-id>` | 저장된 계획을 구현하거나 재개하려면 Default mode에서 명시적으로 호출 | 격리된 feature worktree에서 명세 승격, 구현, 평가, 독립 리뷰를 수행하고 검증된 tree를 `main`에 단일 squash commit으로 통합한다. |
+| `$implement-dev-plan <feature-id>` | 저장된 계획을 구현하거나 재개하려면 Default mode에서 명시적으로 호출 | 격리된 feature worktree에서 명세 승격, 구현, 필요한 검증, 독립 리뷰를 수행하고 검증된 tree를 `main`에 단일 squash commit으로 통합한다. |
 
 ### 수동 저장과 구현
 
@@ -63,12 +63,19 @@ $implement-dev-plan <feature-id>
 같은 `$implement-dev-plan <feature-id>` 형식을 사용한다. 구현이 성공해도 자동으로
 `push`하거나 feature branch 또는 worktree를 삭제하지 않는다.
 
+eval과 통합 후 smoke 계약은 각각 필요한 경우에만 만든다. 에이전트는 저장소 필수 검사,
+변경의 실제 위험과 검증의 유용성을 기준으로 판단하고 이유와 적절한 검증 방법을 계획에
+기록한다. 계약을 생략해도 승인 기준과 독립 리뷰는 유지하며, 검사 실패나 환경 부족을
+성공으로 처리하지 않는다. smoke가 불필요하면 추가 사용자 확인 없이 통합·완료한다.
+계획에는 관련 프로젝트 리뷰 규칙과 회귀·경계 사례를 반영하며, 독립 리뷰는 전체 변경을
+검토한다.
+
 ## 워크플로 산출물
 
 확정 계획은 `<git-common-dir>/dev-plan-workflow/plans/<id>/` 아래에 `spec.md`, `plan.md`,
 `state.json`으로 원자적으로 저장된다. 구현을 시작하면 지속 기능 명세만
 `docs/dev-plans/specs/<id>/spec.md`로 승격되어 commit된다. 로컬 구현 계획은 실행과 복구를
-위해 Git metadata에 남고, 성공적인 통합 smoke 뒤에만 삭제된다.
+위해 Git metadata에 남고, 통합과 적용되는 사후 검증의 성공을 완료 marker로 기록한 뒤에만 삭제된다.
 
 `docs/dev-plans/current-spec.md`는 새 워크플로가 도입하거나 바꾼 현재 의도를 정규화한다.
 과거 spec의 합본이나 연대기가 아니다. source code와 tests는 동작의 source of truth이고,

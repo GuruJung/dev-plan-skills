@@ -13,10 +13,10 @@ Usage:
     --expected-feature SHA \
     --feature-title TITLE \
     [--main-branch NAME] \
-    [--recover-pending smoke|rollback] \
-    [--smoke COMMAND ...]
+    [--recover-pending finish|smoke|rollback] \
+    [--smoke COMMAND ... | --skip-smoke]
 
-At least one --smoke is required except with --recover-pending rollback.
+Choose --smoke or --skip-smoke, except with --recover-pending rollback.
 
 Exit codes:
   0   integrated
@@ -44,6 +44,7 @@ expected_feature=
 feature_title=
 main_branch=main
 recover_pending=
+smoke_policy=
 declare -a smoke_commands=()
 
 while (($#)); do
@@ -93,6 +94,10 @@ while (($#)); do
       recover_pending=$2
       shift 2
       ;;
+    --skip-smoke)
+      smoke_policy=skipped
+      shift
+      ;;
     --smoke)
       (($# >= 2)) || die_usage "missing value for --smoke"
       smoke_commands+=("$2")
@@ -123,13 +128,25 @@ if [[ "$feature_title" == *$'\n'* || "$feature_title" == *$'\r'* ]]; then
 fi
 commit_subject="$feature_title ($feature_id)"
 if [[ -n "$recover_pending" ]] &&
+   [[ "$recover_pending" != finish ]] &&
    [[ "$recover_pending" != smoke ]] &&
    [[ "$recover_pending" != rollback ]]; then
-  die_usage "--recover-pending must be smoke or rollback"
+  die_usage "--recover-pending must be finish, smoke, or rollback"
 fi
-if [[ "$recover_pending" != rollback ]] && ((${#smoke_commands[@]} == 0)); then
-  die_usage "at least one --smoke command is required"
+if [[ "$smoke_policy" == skipped ]] && ((${#smoke_commands[@]} > 0)); then
+  die_usage "--skip-smoke and --smoke are mutually exclusive"
 fi
+if ((${#smoke_commands[@]} > 0)); then
+  smoke_policy=required
+fi
+if [[ "$recover_pending" != rollback && -z "$smoke_policy" ]]; then
+  die_usage "choose --smoke or --skip-smoke"
+fi
+if [[ "$recover_pending" == smoke && "$smoke_policy" != required ]]; then
+  die_usage "--recover-pending smoke requires --smoke; use finish for skipped smoke"
+fi
+smoke_status=passed
+[[ "$smoke_policy" != skipped ]] || smoke_status=skipped
 
 command -v git >/dev/null || die_usage "git is required"
 command -v flock >/dev/null || die_usage "flock is required"
@@ -203,24 +220,30 @@ if [[ ! -f "$local_plan" && ! -f "$completion_file" ]]; then
   die_usage "local plan must be a plain file"
 fi
 
-# Reject the legacy four-field marker format before opening the lock file so this compatibility
-# failure leaves both refs and metadata unchanged.
-if [[ -f "$pending_file" ]]; then
-  mapfile -t marker_probe < "$pending_file"
-  if ((${#marker_probe[@]} != 5)); then
-    printf 'status=recovery-required reason=invalid-pending-marker marker=%q\n' \
-      "$pending_file" >&2
+# Normalize legacy five-field markers to required smoke. Reject malformed markers and
+# policy changes before opening the lock, and repeat the check after waiting for it.
+read_marker() {
+  local marker=$1
+  local -n values=$2
+  mapfile -t values < "$marker"
+  if ((${#values[@]} == 5)); then
+    values+=(required)
+  fi
+  if ((${#values[@]} != 6)) ||
+     [[ "${values[5]}" != required && "${values[5]}" != skipped ]]; then
+    printf 'status=recovery-required reason=invalid-marker marker=%q\n' "$marker" >&2
     exit 31
   fi
-fi
-if [[ -f "$completion_file" ]]; then
-  mapfile -t marker_probe < "$completion_file"
-  if ((${#marker_probe[@]} != 5)); then
-    printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
-      "$completion_file" >&2
+  if [[ -n "$smoke_policy" && "$smoke_policy" != "${values[5]}" ]]; then
+    printf 'status=recovery-required reason=smoke-policy-mismatch marker=%q\n' "$marker" >&2
     exit 31
   fi
-fi
+}
+for marker in "$pending_file" "$completion_file"; do
+  if [[ -f "$marker" ]]; then
+    read_marker "$marker" marker_probe
+  fi
+done
 
 if [[ ! -f "$pending_file" ]]; then
   if [[ -n "$(git -C "$main_root" status --porcelain)" ]]; then
@@ -265,8 +288,10 @@ validate_squash_commit() {
 }
 
 if [[ -f "$completion_file" && ! -f "$pending_file" ]]; then
-  mapfile -t completion_values < "$completion_file"
-  if ((${#completion_values[@]} != 5)) ||
+  [[ "$recover_pending" != rollback ]] ||
+    die_usage "completed integration cannot be rolled back"
+  read_marker "$completion_file" completion_values
+  if ((${#completion_values[@]} != 6)) ||
      [[ "${completion_values[0]}" != "$expected_main" ]] ||
      [[ "${completion_values[1]}" != "$expected_feature" ]] ||
      [[ "${completion_values[3]}" != "$main_root" ]] ||
@@ -283,8 +308,8 @@ if [[ -f "$completion_file" && ! -f "$pending_file" ]]; then
       "$completion_file" >&2
     exit 31
   fi
-  printf 'status=integrated pre=%s feature=%s head=%s smoke_count=%s recovered=true marker=%q\n' \
-    "$expected_main" "$expected_feature" "$merged_sha" "${#smoke_commands[@]}" \
+  printf 'status=integrated pre=%s feature=%s head=%s smoke_count=%s smoke_status=%s recovered=true marker=%q\n' \
+    "$expected_main" "$expected_feature" "$merged_sha" "${#smoke_commands[@]}" "$smoke_status" \
     "$completion_file"
   exit 0
 fi
@@ -296,8 +321,8 @@ if [[ -f "$pending_file" ]]; then
     exit 31
   fi
 
-  mapfile -t pending_values < "$pending_file"
-  if ((${#pending_values[@]} != 5)); then
+  read_marker "$pending_file" pending_values
+  if ((${#pending_values[@]} != 6)); then
     printf 'status=recovery-required reason=invalid-pending-marker marker=%q\n' \
       "$pending_file" >&2
     exit 31
@@ -319,7 +344,7 @@ if [[ -f "$pending_file" ]]; then
 
   if [[ "$recover_pending" == rollback ]]; then
     [[ ! -f "$completion_file" ]] ||
-      die_usage "completed smoke must be recovered with --recover-pending smoke"
+      die_usage "completed integration must be recovered with --recover-pending finish"
     if [[ "$actual_main" != "$pre_merge_sha" && "$actual_main" != "$merged_sha" ]]; then
       printf 'status=recovery-required reason=pending-marker-mismatch marker=%q\n' \
         "$pending_file" >&2
@@ -372,13 +397,14 @@ if [[ -f "$pending_file" ]]; then
   fi
 
   if [[ -f "$completion_file" ]]; then
-    mapfile -t completion_values < "$completion_file"
-    if ((${#completion_values[@]} != 5)) ||
+    read_marker "$completion_file" completion_values
+    if ((${#completion_values[@]} != 6)) ||
        [[ "${completion_values[0]}" != "${pending_values[0]}" ]] ||
        [[ "${completion_values[1]}" != "${pending_values[1]}" ]] ||
        [[ "${completion_values[2]}" != "${pending_values[2]}" ]] ||
        [[ "${completion_values[3]}" != "${pending_values[3]}" ]] ||
        [[ "${completion_values[4]}" != "${pending_values[4]}" ]] ||
+       [[ "${completion_values[5]}" != "${pending_values[5]}" ]] ||
        [[ "$actual_main" != "$merged_sha" ]]; then
       printf 'status=recovery-required reason=completion-marker-mismatch marker=%q\n' \
         "$completion_file" >&2
@@ -438,8 +464,8 @@ else
     exit 31
   fi
   pending_tmp=$pending_file.$$
-  printf '%s\n%s\n%s\n%s\n%s\n' \
-    "$pre_merge_sha" "$actual_feature" "$merged_sha" "$main_root" "$feature_root" \
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
+    "$pre_merge_sha" "$actual_feature" "$merged_sha" "$main_root" "$feature_root" "$smoke_policy" \
     >"$pending_tmp"
   mv -- "$pending_tmp" "$pending_file"
 
@@ -500,8 +526,8 @@ fi
 
 if [[ "$smoke_already_complete" == false ]]; then
   completion_tmp=$completion_file.tmp-$$
-  printf '%s\n%s\n%s\n%s\n%s\n' \
-    "$pre_merge_sha" "$expected_feature" "$merged_sha" "$main_root" "$feature_root" \
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
+    "$pre_merge_sha" "$expected_feature" "$merged_sha" "$main_root" "$feature_root" "$smoke_policy" \
     >"$completion_tmp"
   mv -- "$completion_tmp" "$completion_file"
 fi
@@ -512,6 +538,6 @@ if [[ -f "$local_plan" ]] && ! rm -- "$local_plan"; then
   exit 31
 fi
 rm -f "$pending_file"
-printf 'status=integrated pre=%s feature=%s head=%s smoke_count=%s marker=%q\n' \
-  "$pre_merge_sha" "$expected_feature" "$merged_sha" "${#smoke_commands[@]}" \
+printf 'status=integrated pre=%s feature=%s head=%s smoke_count=%s smoke_status=%s marker=%q\n' \
+  "$pre_merge_sha" "$expected_feature" "$merged_sha" "${#smoke_commands[@]}" "$smoke_status" \
   "$completion_file"

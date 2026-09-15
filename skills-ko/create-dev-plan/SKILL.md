@@ -5,8 +5,6 @@ description: 지속 기능 명세와 로컬 구현 계획을 분리한 표준 �
 
 # 개발 계획 만들기
 
-계획만 수행합니다. 파일을 쓰거나, branch를 만들거나, 구현하거나, 변경을 일으키는 명령을 실행하지 마세요.
-
 사용자가 다른 언어를 명시적으로 요청하지 않는 한 질문, 상태 안내, 서술형 산출물에는 사용자의 현재 대화 언어를 사용하세요. 명령, 식별자, 경로, enum 값, YAML/JSON 키는 원형을 유지하세요.
 
 ## Plan 모드 요구
@@ -15,13 +13,11 @@ Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 �
 
 ## 인터뷰의 근거 확보
 
-질문하기 전에 저장소를 조사하세요. 적용되는 지침, 관련 코드, 설정, 테스트와 기존 관례를 읽고 탐색으로 확인할 수 있는 사실은 직접 해결하세요.
-
 `docs/dev-plans/current-spec.md`가 있으면 현재 제품 의도를 확인하는 첫 문서로 읽으세요. 현재 작업과 관련되고 current spec에서 연결한 `docs/dev-plans/specs/*/spec.md`만 결정 이유를 확인할 때 읽으세요. current spec의 coverage 밖인 의도는 코드에서 추정하지 말고 필요한 경우 사용자에게 확인하세요.
 
 조사 후 기능 유형을 판별하세요.
 
-- `standard`: 명시적인 승인 및 평가 기준이 있는 한정된 구현
+- `standard`: 의미 중심 승인 기준이 있는 한정된 구현
 - `goal-loop`: 측정 가능한 목표를 향해 구현 또는 튜닝을 반복
 
 유형이 명확하면 직접 선택하고 짧게 알린 뒤 해당 인터뷰로 진행하세요. 조사 후에도 불명확할 때만 `standard`와 `goal-loop` 중 하나를 선택하게 하세요. 표시 레이블은 대화 언어로 현지화하되 내부 값은 유지하고, 가능한 경우 구조화된 사용자 입력 도구를 사용하세요. 다른 유형을 제시하지 마세요.
@@ -36,25 +32,13 @@ Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 �
 
 ## 표준 기능 인터뷰
 
-다음 사항이 확정될 때까지 중요한 질문을 계속하세요.
-
-- 의도한 결과, 대상 사용자, 완료 정의
-- 포함할 동작과 제외할 동작
-- 호환성, 보안, 성능, 운영 제약
-- 실패 방식과 복구 기대사항
-- 구현 접근법과 주요 인터페이스 또는 데이터 흐름
-- 실행 가능한 eval 명령과 성공 조건
-- 독립 리뷰 승인 기준
-- 기본값이 60초인 자동 smoke 기준 시간
-- 기능에 필요한 경우에만 rollout, migration, monitoring
-
-모든 eval을 자동 smoke 후보로 취급하고 eval별 선택을 묻거나 기록하지 마세요. 적어도 하나의 eval은 기준 시간 이내에 실행될 것으로 검증되거나 합리적으로 예상되어야 합니다.
+일반적인 조사와 인터뷰는 native Plan 모드에 따르세요. 확정한 의도를 두 산출물로 분리하고 아래의 검증 필요성을 판단하세요.
 
 ## 목표 루프 기능 인터뷰
 
 지속 기능 명세에는 결과, metric과 unit, optimization direction, 수치 target과 tolerance, correctness·performance·quality guardrail, 허용·금지 변경과 호환성 제약을 확정하세요.
 
-로컬 계획에는 재현 가능한 baseline과 measurement 명령, 성공 해석, 최대 iterations·wall-clock duration·token budget 중 적어도 하나, best-so-far 비교와 checkpoint 규칙, 동률 tie-breaker, 보고·중단·재계획 조건, 전체 최종 eval과 자동 병합 후 smoke 계약을 확정하세요.
+로컬 계획에는 재현 가능한 baseline과 measurement 명령, 성공 해석, 최대 iterations·wall-clock duration·token budget 중 적어도 하나, best-so-far 비교와 checkpoint 규칙, 동률 tie-breaker, 보고·중단·재계획 조건을 확정하세요. 별도의 최종 eval과 통합 후 smoke는 아래 기준으로 필요성을 각각 판단하되 목표·guardrail 측정은 유지하세요.
 
 예상 평가 비용을 조사해 구체적인 budget 선택지를 추천하세요. 사용자가 응답하지 않았을 때 기본값을 임의로 고르지 말고 적어도 하나의 수치 budget을 명시적으로 승인받으세요. 사용자가 token 수를 승인한 경우에만 네이티브 token budget을 포함하세요.
 
@@ -69,6 +53,18 @@ Plan 모드가 활성화되어 있지 않으면 사용자에게 Plan 모드로 �
 - 예기치 않은 사용자 또는 동시 변경은 버리지 않고 중단
 
 native goal은 target과 guardrail이 검증되면 끝납니다. 독립 리뷰와 통합은 이후 `$implement-dev-plan` 단계입니다.
+
+## 검증 계약과 리뷰 준비
+
+eval과 통합 후 smoke의 필요성을 각각 판단하세요. 적용되는 저장소 필수 검사, 변경의 실제 위험과 실행 가능한 검증의 유용성을 근거로 local plan에 `eval_required`와 `smoke_required`를 boolean으로 명시하고 필요성·생략 이유를 짧게 기록하세요. 중요한 불확실성만 사용자에게 질문하세요.
+
+- `eval_required: true`이면 실행 가능한 명령과 성공 조건을 확정합니다. `false`이면 별도 eval 계약을 요구하지 않되 의미 중심 승인 기준과 적절한 수동·의미 검증 방법을 남깁니다. 형식적인 명령을 만들지 않습니다.
+- `smoke_required: true`이면 local에서 안전하게 반복할 수 있고 deployment나 되돌릴 수 없는 외부 side effect가 없는 명령과 기준 시간(기본 60초)을 확정합니다. eval 명령을 재사용하거나 별도 명령을 정하고, 기준 시간 내 실행을 검증하거나 합리적으로 예상합니다. 빠른 eval의 존재만으로 smoke를 의무화하지 않습니다.
+- `smoke_required: false`이면 `smoke_threshold_seconds`와 smoke 계약을 생략합니다. 적용되는 검증과 독립 리뷰 후 추가 사용자 확인 없이 통합·완료합니다.
+
+계약 생략은 저장소 필수 검사를 면제하지 않습니다. 검사 실패나 환경 부족을 불필요한 계약으로 바꾸어 통과시키지 마세요. 실행 중 중요한 위험이 발견되면 필요성을 다시 판단하세요.
+
+두 기능 유형 모두 적용되는 `AGENTS.md`, override와 연결된 리뷰 문서를 확인하세요. 정확성·보안·성능·유지보수성, 기존 동작의 회귀, 관련 호출부와 경계 사례 중 이번 변경에 관련된 제약·불변조건·위험을 spec 승인 기준과 local 검증 방법에 연결하세요. 내장 리뷰의 출력 JSON, finding 작성법이나 우선순위 표기 규칙을 계획에 복사하지 마세요. 구현 후 독립 리뷰는 계획 체크리스트에 한정하지 않고 전체 변경을 검토합니다.
 
 ## Current Spec 영향 확정
 
@@ -93,6 +89,8 @@ base_branch: main
 spec_path: docs/dev-plans/specs/<id>/spec.md
 current_spec_path: docs/dev-plans/current-spec.md
 plan_path: <git-common-dir>/dev-plan-workflow/plans/<id>/plan.md
+eval_required: true
+smoke_required: true
 smoke_threshold_seconds: 60
 execution_handoff:
   skill: save-dev-plan
@@ -102,10 +100,12 @@ execution_handoff:
 ---
 ```
 
+위 boolean은 예시이므로 각각 판단한 값으로 대체하고 smoke가 불필요하면 threshold를 빼세요. 신규 계획에는 두 boolean을 모두 명시하세요.
+
 계획에 다음 두 최상위 섹션을 포함하세요.
 
 1. `Tracked Feature Spec`: 요약, 요구사항과 비범위, `Current Spec Impact`, 사용자 결정 사항, 승인 기준
-2. `Local Implementation Plan`: 구현 접근법, 작업 순서, eval 계약과 실행 관련 결정
+2. `Local Implementation Plan`: 구현 접근법, 작업 순서, 검증 필요성·방법, 필요한 계약과 실행 관련 결정
 
 모든 계획의 tracked spec에 현재 대화 언어로 `사용자 결정 사항` 또는 `User Decisions`를 포함하세요. 결정 주제, 사용자가 선택한 내용, 사용자가 밝힌 이유나 tradeoff와 적용 범위를 기록하세요. 이유가 없으면 만들어내지 말고 `명시되지 않음`에 해당하는 표현을 사용하세요. 저장소 사실과 agent 기본값은 사용자 결정으로 기록하지 마세요.
 
@@ -113,4 +113,4 @@ goal loop의 지속 target과 guardrail은 tracked spec에, native objective와 
 
 요구되는 Plan 모드 형식으로 의사결정 완료 계획을 작성하세요.
 
-마지막 인용문에서 host의 "Implement this plan" 동작은 Default 모드로 전환한 뒤 `$save-dev-plan`에 Git 공용 metadata 임시 저장을 위임하고, 저장에 성공하면 확정된 feature ID로 `$implement-dev-plan`까지 추가 확인 없이 이어서 실행한다고 안내하세요. 이 선택은 같은 대화의 최신 확정 계획에 대해서만 저장, branch·worktree 생성, 구현, 평가, 독립 리뷰와 통합을 승인합니다. 자동 handoff가 시작되지 않으면 Default 모드에서 `$save-dev-plan`을 명시적으로 호출한 뒤 보고된 ID로 `$implement-dev-plan <id>`를 호출하도록 안내하세요. 계속 계획하면 아무것도 저장하거나 구현하지 마세요.
+마지막 인용문에서 host의 "Implement this plan" 동작은 Default 모드로 전환한 뒤 `$save-dev-plan`에 Git 공용 metadata 임시 저장을 위임하고, 저장에 성공하면 확정된 feature ID로 `$implement-dev-plan`까지 추가 확인 없이 이어서 실행한다고 안내하세요. 이 선택은 같은 대화의 최신 확정 계획에 대해서만 저장, branch·worktree 생성, 구현, 평가, 독립 리뷰와 통합을 승인합니다. 자동 handoff가 시작되지 않으면 Default 모드에서 `$save-dev-plan`을 명시적으로 호출한 뒤 보고된 ID로 `$implement-dev-plan <id>`를 호출하도록 안내하세요.

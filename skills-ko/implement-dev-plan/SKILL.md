@@ -36,6 +36,8 @@ marker만으로 선택이나 저장 성공을 추정하지 말고, 새 대화나
 
 알 수 없는 ID는 거부하세요. `state.json`에서 `schema_version`이 정확히 `2`이고 `feature_type`이 `standard` 또는 `goal-loop`인지 요구하세요. terminal 상태가 아니면 plain local `plan.md`를 요구하되, plain `integration.complete` marker가 있으면 아래 통합 복구를 위해 plan 부재를 허용하세요. 임시 `spec.md` 또는 state의 `spec_path`에 commit된 tracked spec 중 하나를 요구하세요. 필수 신규 산출물이 없거나 유효하지 않으면 내용을 추정하거나 다른 경로를 찾지 말고 무변경 중단하세요.
 
+계획과 state의 `eval_required`·`smoke_required`를 확인하세요. 두 값은 독립적인 boolean이어야 하며 서로 일치해야 합니다. 기존 schema-v2 산출물에서 두 필드가 모두 없으면 기존 계약대로 둘 다 `true`로 해석하고 소급 완화하지 마세요. 한 필드만 없거나 타입·값이 불일치하면 무변경 중단하세요. 완료 복구로 plan이 없으면 state의 정책과 marker의 smoke 방식을 대조하세요.
+
 ## 계획된 기능 준비
 
 상태가 `planned`이면 다음을 수행하세요.
@@ -93,13 +95,13 @@ helper는 Git 공용 metadata와 `plans/<id>`까지 모든 경로 구성요소�
 
 Git을 source of truth로 취급하세요. metadata가 불일치하면 보여 주고 사용자가 복구 동작을 선택한 뒤에만 고치세요. 사용자 승인 없이 feature 작업을 버리거나 reset·제거하지 마세요.
 
-`<git-common-dir>/dev-plan-workflow/integration.pending`이 있으면 다른 통합을 차단하고 matching 기능에는 smoke 재실행 또는 main rollback 선택을 요구하세요.
+`<git-common-dir>/dev-plan-workflow/integration.pending`이 있으면 다른 통합을 차단하고 matching 기능에는 기록된 정책에 따른 통합 마무리 또는 main rollback 선택을 요구하세요.
 
 ## 표준 기능 구현
 
 local plan의 실행 범위 안에서 자율적으로 구현하되 feature spec과 current spec을 authoritative intent로 사용하세요. 요구사항 재해석이나 안전하지 않은 결정이 필요하거나 실제로 막히면 질문하세요.
 
-전체 eval을 실행하고 command, result, duration, feature HEAD와 timestamp를 `eval-results.json`에 기록하세요. authoritative review 전에 worktree가 clean이고 commit이 논리적으로 구성되어야 합니다.
+계획의 적용되는 검증을 수행하세요. `eval_required: true`이면 전체 eval을 실행하고 command, result, duration, feature HEAD와 timestamp를 `eval-results.json`에 기록하세요. `false`이면 이 파일을 요구하지 말고 수동·의미 검토 등 실제 증거와 생략 이유를 남기세요. 저장소 필수 검사는 유지하고 실패나 환경 부족을 불필요로 바꾸지 마세요. 중요한 위험이 새로 드러나면 계약 필요성을 다시 판단하세요. authoritative review 전에 worktree가 clean이고 commit이 논리적으로 구성되어야 합니다.
 
 ## 네이티브 목표 루프
 
@@ -109,32 +111,32 @@ goal 도구가 있으면 활성 goal을 확인해 같은 feature ID와 objective
 
 각 실험은 clean baseline 또는 current best checkpoint에서 시작하고 승인된 search space만 바꾸세요. measurement와 guardrail, parameters, metric, duration, budget usage와 HEAD를 기록하세요. 유효한 개선만 best commit으로 보존하고 실패하거나 더 나쁜 agent 소유 변경은 best checkpoint로 복원하세요. 예기치 않은 사용자·동시 변경은 덮어쓰지 마세요.
 
-모든 budget을 강제하세요. target에 도달하지 못한 채 소진되면 complete로 표시하지 말고 재계획 또는 goal pause·edit·clear를 요청하세요. target과 guardrail이 재현 가능하게 검증되면 goal을 complete로 표시하고, token budget이 있으면 goal 도구가 반환한 최종 token usage를 보고한 뒤 전체 feature eval, 독립 리뷰와 통합을 계속하세요.
+모든 budget을 강제하세요. target에 도달하지 못한 채 소진되면 complete로 표시하지 말고 재계획 또는 goal pause·edit·clear를 요청하세요. target과 guardrail이 재현 가능하게 검증되면 goal을 complete로 표시하고, token budget이 있으면 goal 도구가 반환한 최종 token usage를 보고한 뒤 적용되는 최종 검증, 독립 리뷰와 통합을 계속하세요.
 
 ## Authoritative 결과와 독립 리뷰
 
-eval과 review 결과를 clean feature HEAD에 연결하고 변경이 생기면 stale로 표시하세요. goal loop는 verified best checkpoint에 전체 eval을 다시 실행합니다.
+검증과 review 결과를 clean feature HEAD에 연결하고 변경이 생기면 stale로 표시하세요. goal loop는 verified best checkpoint의 target·guardrail과 적용되는 최종 검증을 확인합니다.
 
-전체 eval 통과 후 구현 context가 격리된 reviewer subagent 하나를 생성하고 다음만 제공하세요.
+적용되는 검증을 마친 뒤 구현 context가 격리된 reviewer subagent 하나를 생성하고 다음만 제공하세요. 별도 eval 계약이 없어도 독립 리뷰를 수행하며, 없는 결과를 통과로 표시하지 마세요.
 
 - tracked feature spec, 관련 current spec과 승인 기준
 - comparison ref와 feature HEAD
 - 전체 merge diff target
-- eval results
+- 실제 검증 증거와 계약 생략 이유, 해당하는 경우 eval results
 
-reviewer는 read-only로 작업하고 파일 수정, commit, push, comment 게시 또는 위임을 하지 않습니다. 적용되는 `AGENTS.md`, spec, current spec, eval results를 읽고 merge-base부터 feature HEAD까지 전체 diff와 모든 changed path 주변 코드, 관련 테스트와 call site를 조사하세요. 첫 finding을 찾은 뒤에도 전체 diff를 끝까지 확인하고 인용 line은 reviewed diff와 겹치는 최소 범위로 제한하세요.
+reviewer는 read-only로 작업하고 파일 수정, commit, push, comment 게시 또는 위임을 하지 않습니다. 적용되는 root·scoped `AGENTS.md`, override와 연결된 리뷰 지침, spec, current spec, 실제 검증 증거를 읽고 merge-base부터 feature HEAD까지 전체 diff와 모든 changed path 주변 코드, 관련 테스트와 call site를 조사하세요. 첫 finding을 찾은 뒤에도 전체 diff를 끝까지 확인하고 인용 line은 reviewed diff와 겹치는 최소 범위로 제한하세요.
 
-meaningful correctness·security·performance·maintainability 영향이 있고, 분리 가능하며, 이번 변경이 만들었고, 실제 scenario로 입증되며, 작성자가 고칠 가능성이 높은 문제만 finding으로 보고하세요. 추측, 기존 문제, 의도된 변경과 사소한 style nit는 제외하세요.
+저장소 수준과 변경 위험에 비례해 판단하고 계획 체크리스트 밖의 실제 결함도 검토하세요. 프로젝트 규칙에 근거한 finding은 해당 지침 파일의 원문과 최소 line 범위도 인용하세요. meaningful correctness·security·performance·maintainability 영향이 있고, 분리 가능하며, 이번 변경이 만들었고, 실제 scenario로 입증되며, 작성자가 고칠 가능성이 높은 문제만 finding으로 보고하세요. 추측, 기존 문제, 의도된 변경과 사소한 style nit는 제외하세요.
 
-finding은 심각도순으로 `[P1] <명령형 제목> - path/to/file:line`과 짧은 근거를 사용하세요. findings 뒤에는 전체 평가, 중요한 test gap이나 residual risk와 명시적인 acceptance decision을 반환하세요. P0는 universal blocker, P1은 urgent, P2는 ordinary defect, P3는 low-impact issue입니다. P0-P2가 없을 때만 accept하세요. P0-P2를 수정한 뒤 영향 eval과 중단 없이 이어지는 같은 review 단계에서는 같은 reviewer recheck를 수행하고, P3는 `review.md`와 state에 기록하되 통합을 막지 않습니다. reviewer를 사용할 수 없으면 통합 전에 중단하세요.
+finding은 심각도순으로 `[P1] <명령형 제목> - path/to/file:line`과 짧은 근거를 사용하세요. findings 뒤에는 전체 평가, 중요한 test gap이나 residual risk와 명시적인 acceptance decision을 반환하세요. P0는 universal blocker, P1은 urgent, P2는 ordinary defect, P3는 low-impact issue입니다. P0-P2가 없을 때만 accept하세요. P0-P2를 수정한 뒤 영향 검증과 중단 없이 이어지는 같은 review 단계에서는 같은 reviewer recheck를 수행하고, P3는 `review.md`와 state에 기록하되 통합을 막지 않습니다. reviewer를 사용할 수 없으면 통합 전에 중단하세요.
 
 ## 최신 main 재검증과 smoke
 
 유일하고 clean인 main worktree를 찾아 설정된 경우 `origin/main`을 fetch하세요. behind면 fast-forward하고 diverge하면 `integration-blocked`로 중단하세요. main이 feature HEAD의 ancestor가 아니면 rebase하고, intent가 바뀌는 conflict는 재계획하세요.
 
-authoritative eval 이후 main이 바뀌면 전체 eval을 재실행하고 effective merge diff가 바뀌면 새 reviewer를 생성하세요. clean하고 평가·승인된 HEAD에만 `integration-ready`, `validated_feature_head`, `validated_main_sha`를 설정하세요.
+authoritative 검증 이후 main이 바뀌면 적용되는 검증을 재실행·재검토하고 effective merge diff가 바뀌면 새 reviewer를 생성하세요. clean하고 검증·승인된 HEAD에만 `integration-ready`, `validated_feature_head`, `validated_main_sha`를 설정하세요.
 
-최신 성공 eval duration과 계획 threshold, 기본 60초를 사용해 threshold 이내의 모든 eval을 자동 smoke로 포함하세요. 적어도 하나가 필요하며 local에서 반복 가능하고 deployment나 되돌릴 수 없는 외부 side effect가 없어야 합니다.
+`smoke_required: true`일 때만 계획의 smoke 계약을 준비하세요. 최신 성공 eval의 duration을 참고해 명령을 재사용하거나 별도 smoke 명령을 통합 전에 검증하고, 계획 threshold(기본 60초) 이내이며 local에서 안전하게 반복 가능한 명령을 하나 이상 확보하세요. deployment나 되돌릴 수 없는 외부 side effect는 허용하지 않습니다. `smoke_required: false`이면 smoke를 만들지 않고 적용되는 검증과 독립 리뷰 후 추가 사용자 확인 없이 통합합니다.
 
 ## 통합
 
@@ -153,9 +155,11 @@ scripts/integrate-feature.sh \
   --smoke '<command>' [--smoke '<command>' ...]
 ```
 
-helper는 Git 공용 metadata부터 feature metadata directory까지 모든 경로 구성요소와 local plan이 plain인지 확인합니다. 검증된 feature tree로 validated main을 유일한 부모로 하고 제목이 `<state-title> (<id>)`인 squash commit을 만든 뒤 main을 그 commit으로 fast-forward합니다. `commit.gpgSign=true`이면 squash commit도 서명하며 서명 생성이나 검증 실패 시 main과 pending metadata를 변경하지 않고 중단합니다. 새 `integration.pending`과 `integration.complete` marker는 validated main, validated feature HEAD, squash main SHA와 두 worktree를 담는 5필드 형식만 허용합니다. 기존 4필드 marker는 어느 ref나 metadata도 변경하지 않고 `recovery-required`로 중단합니다.
+위 `integrate-feature.sh` 호출에 `--smoke`를 전달하는 것은 `smoke_required: true`일 때뿐입니다. 확정 계획이 `false`이면 해당 호출의 `--smoke` 인자들을 `--skip-smoke`로 대체하세요. 둘을 함께 전달하지 마세요.
 
-smoke가 모두 통과하면 helper는 `integration.complete` marker를 원자적으로 기록한 뒤 local plan과 pending marker를 제거하고, validated feature HEAD를 `feature`, squash main SHA를 `head`로 구분해 `integrated`를 반환합니다. marker가 있으면 main이 아직 validated main일 때 기록된 squash commit으로 전진한 뒤 smoke를 재실행하고, 이미 squash SHA일 때는 그 commit을 검증한 뒤 smoke를 재실행할 수 있습니다. rollback은 main을 validated main에 유지·복원하고 local plan을 보존합니다. marker 작성 전 recovery-required도 local plan을 보존합니다. 중단된 integration은 같은 인자와 `--recover-pending smoke` 또는 `--recover-pending rollback`을 사용하세요.
+helper는 Git 공용 metadata부터 feature metadata directory까지 모든 경로 구성요소와 local plan이 plain인지 확인합니다. 검증된 feature tree로 validated main을 유일한 부모로 하고 제목이 `<state-title> (<id>)`인 squash commit을 만든 뒤 main을 그 commit으로 fast-forward합니다. `commit.gpgSign=true`이면 squash commit도 서명하며 서명 생성이나 검증 실패 시 main과 pending metadata를 변경하지 않고 중단합니다. 새 `integration.pending`과 `integration.complete` marker는 validated main, validated feature HEAD, squash main SHA, 두 worktree와 `required|skipped` 방식을 담는 6필드입니다. 기존 5필드는 `required`로 해석하고, 기존 4필드나 잘못된 방식은 어느 ref나 metadata도 변경하지 않고 `recovery-required`로 중단합니다. 복구 호출의 smoke 방식이 marker와 달라도 무변경 중단하며 필수 smoke를 생략할 수 없습니다.
+
+필수 smoke가 모두 통과하거나 승인된 생략 경로가 성공하면 helper는 `integration.complete` marker를 원자적으로 기록한 뒤 local plan과 pending marker를 제거하고, validated feature HEAD를 `feature`, squash main SHA를 `head`로 구분해 `integrated`와 `smoke_status=passed|skipped`를 반환합니다. 생략 시 `smoke_count=0`이며 clean·SHA·tree·동시 변경·서명·경로 검사는 유지됩니다. pending marker만 있으면 main이 아직 validated main일 때 기록된 squash commit으로 전진한 뒤 기록된 정책대로 마무리하고, 이미 squash SHA일 때는 그 commit을 검증한 뒤 같은 정책대로 마무리합니다. 유효한 completion marker가 있으면 완료된 smoke를 재실행하지 않고 정리를 복구합니다. rollback은 main을 validated main에 유지·복원하고 local plan을 보존합니다. marker 작성 전 recovery-required도 local plan을 보존합니다. 중단된 integration은 같은 인자와 `--recover-pending finish` 또는 `--recover-pending rollback`을 사용하세요. 기존 `--recover-pending smoke`는 필수 smoke 복구에만 허용합니다.
 
 `integrated`이면 state에 `integrated_main_sha`를 포함해 원자적으로 갱신한 뒤에만 `integration.complete` marker를 제거하고 종료하세요. completion marker가 남은 재진입은 Git과 marker가 일치할 때 같은 helper call로 결과를 복구하세요. `stale-main` 또는 `not-fast-forward`면 재검증으로 돌아가고, `smoke-rolled-back`이면 `needs-replan`, `recovery-required`이면 main 복구 전 추가 통합 중단으로 처리하세요. terminal 상태에서는 local plan이 없어도 됩니다.
 
