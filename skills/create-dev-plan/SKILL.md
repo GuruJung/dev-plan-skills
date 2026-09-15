@@ -15,6 +15,8 @@ If Plan mode is not active, ask the user to switch to Plan mode and invoke `$cre
 
 When `docs/dev-plans/current-spec.md` exists, read it first for current product intent. Read only `docs/dev-plans/specs/*/spec.md` documents that are relevant to the task and linked from the current spec when decision rationale is needed. Do not infer intent outside current-spec coverage from code; ask the user when that intent is material.
 
+For both feature types, rely on native Plan mode for general exploration and interviewing. The type-specific instructions below are additional matters to resolve; they do not limit the scope of questions to those items.
+
 After exploration, classify the feature type:
 
 - `standard`: a bounded implementation with semantic acceptance criteria;
@@ -32,7 +34,7 @@ Classify each requirement and decision using these rules:
 
 ## Interview a standard feature
 
-Rely on native Plan mode for general exploration and interviewing. Separate the finalized intent into the two artifacts and assess verification needs below.
+Separate the finalized intent into the two artifacts and assess verification needs below.
 
 ## Interview a goal-loop feature
 
