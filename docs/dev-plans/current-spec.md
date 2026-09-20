@@ -48,6 +48,14 @@
   저장 전용으로 유지되며, 저장 실패나 불일치 뒤에는 구현을 시작하지 않는다.
 - `$implement-dev-plan`은 기능 명세만 승격하고 `Current Spec Impact`를 적용하며 로컬
   계획은 실행 산출물로만 사용한다.
+- 구현 단계에서는 독립적인 탐색·분석·검증·구현 작업을 필요할 때 subagent에 위임할 수 있다.
+  위임은 의무가 아니며 전체 구현과 최종 결과의 책임은 메인 대화에 둔다.
+- 위임 작업은 같은 canonical feature worktree와 승인 범위 안에서 변경 범위를 분리한다.
+  공유 실행 상태, staging·commit, branch와 checkpoint, 최종 통합은 메인 대화가 관리한다.
+  checkpoint 생성·복원과 최종 검증·독립 리뷰 전에 위임 결과를 회수하고 변경 작업을 끝낸다.
+  목표 루프의 같은 worktree를 수정하는 실험은 순차적으로 수행하며 checkpoint 복원과 겹치지 않는다.
+- 최종 독립 리뷰는 해당 변경의 구현에 참여하지 않은 reviewer 하나가 수행한다.
+  구현 agent의 자체 점검으로 대신하지 않으며 기존 전체 diff 검토와 승인 조건을 유지한다.
 - current spec에 의미 변경을 적용할 때는 기존 내용을 포함한 전체 서술 언어를 해당
   기능 명세의 주된 서술 언어와 맞춘다. `No change`인 기능은 언어 차이만을 이유로 이
   파일을 수정하지 않는다.
@@ -82,4 +90,5 @@
 [`20260831-chain-save-and-implement`](specs/20260831-chain-save-and-implement/spec.md),
 [`20260904-add-readme-skill-usage`](specs/20260904-add-readme-skill-usage/spec.md),
 [`20260904-bilingual-user-focused-readme`](specs/20260904-bilingual-user-focused-readme/spec.md),
-[`20260915-streamline-planning-and-optional-validation`](specs/20260915-streamline-planning-and-optional-validation/spec.md)이다.
+[`20260915-streamline-planning-and-optional-validation`](specs/20260915-streamline-planning-and-optional-validation/spec.md),
+[`20260920-expand-implementation-delegation`](specs/20260920-expand-implementation-delegation/spec.md)이다.

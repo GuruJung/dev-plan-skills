@@ -5,7 +5,7 @@ description: Prepare, implement, evaluate, independently review, and integrate a
 
 # Implement Dev Plan
 
-Keep implementation ownership in the foreground chat. Create a subagent only for independent review. Do not create a separate implementation agent.
+Keep responsibility for the overall implementation and final result in the main conversation. You may delegate independent exploration, analysis, verification, and implementation subtasks to subagents when useful. Decide whether and how to delegate using native capabilities and applicable instructions; do not require delegation for every task.
 
 Use the user's current conversation language for questions, status, and prose artifacts unless another language is requested. Preserve commands, identifiers, paths, enum values, and YAML or JSON keys exactly.
 
@@ -72,6 +72,10 @@ On re-entry, when only tracked spec remains, require it to be committed at HEAD 
 
 Use the canonical feature worktree for every repository read, edit, command, test, and commit. Verify the expected branch before mutations.
 
+Apply the same canonical feature worktree and approved scope to delegated work. Separate change scopes and avoid concurrent edits to the same file. Only the main conversation may update shared execution metadata, stage or commit, manipulate branches, create or restore checkpoints, or invoke the integration helper.
+
+Before creating or restoring checkpoints, final verification, or independent review, collect delegated results and confirm that all ongoing change work has finished. Do not start new change work during final verification, review, or integration; if changes are needed, return to implementation and refresh the affected evidence.
+
 ## Apply current-spec impact
 
 Before implementation, read `Current Spec Impact` from the tracked feature spec.
@@ -109,7 +113,7 @@ Before code changes, read the complete local `Goal Contract` and tracked target 
 
 When goal tools exist, query the active goal. Adopt it only when feature ID and objective match. Do not replace another unfinished goal; require a pause, clear, or stop choice. When no goal exists, create it from the approved objective and pass a token budget only when an approved token count exists. Without goal tools, print the exact `/goal <objective>` and wait for the user to start it.
 
-Start each experiment from clean baseline or current best checkpoint and change only the approved search space. Record measurement and guardrails, parameters, metric, duration, budget usage, and HEAD. Retain only valid improvements as best commits and restore failed or worse agent-owned changes to the best checkpoint. Never overwrite unexpected user or concurrent changes.
+Run experiments that modify the same worktree sequentially, without overlapping checkpoint restoration. Start each experiment from clean baseline or current best checkpoint and change only the approved search space. Record measurement and guardrails, parameters, metric, duration, budget usage, and HEAD. Retain only valid improvements as best commits and restore failed or worse agent-owned changes to the best checkpoint. Never overwrite unexpected user or concurrent changes.
 
 Enforce every budget. When budget is exhausted before target, do not mark complete; require re-planning or goal pause, edit, or clear. When target and guardrails are reproducibly verified, mark the goal complete, report final token usage returned by the goal tool when a token budget exists, and continue with applicable final verification, independent review, and integration.
 
@@ -117,7 +121,7 @@ Enforce every budget. When budget is exhausted before target, do not mark comple
 
 Bind verification and review results to a clean feature HEAD and mark them stale after changes. For a goal loop, verify target, guardrails, and applicable final checks at the verified best checkpoint.
 
-After completing applicable verification, create one reviewer subagent with isolated implementation context and provide only the following. Independent review still applies without a separate eval contract; never present absent results as passed.
+After completing applicable verification, create one reviewer subagent that did not participate in implementing this change and has isolated implementation context, and provide only the following. An implementation agent's own checks do not replace final independent review. Independent review still applies without a separate eval contract; never present absent results as passed.
 
 - tracked feature spec, relevant current spec, and acceptance criteria;
 - comparison ref and feature HEAD;
