@@ -5,7 +5,7 @@ description: 저장된 신규 형식의 지속 기능 명세와 로컬 구현 �
 
 # 개발 계획 구현
 
-구현 책임은 foreground 대화에 두세요. 독립 리뷰에만 subagent 하나를 생성하고 별도의 구현 agent를 만들지 마세요.
+전체 구현과 최종 결과의 책임은 메인 대화에 두세요. 독립적으로 수행할 수 있는 탐색·분석·검증·구현 하위 작업은 필요할 때 subagent에 위임할 수 있습니다. 위임 여부와 작업 분배는 native 기능과 적용되는 지침에 따라 판단하며, 모든 작업에 위임을 의무화하지 마세요.
 
 사용자가 다른 언어를 요청하지 않는 한 질문, 상태 안내와 서술형 산출물에는 현재 대화 언어를 사용하세요. 명령, 식별자, 경로, enum 값과 YAML/JSON 키는 원형을 유지하세요.
 
@@ -72,6 +72,10 @@ helper는 Git 공용 metadata와 `plans/<id>`까지 모든 경로 구성요소�
 
 모든 저장소 읽기, 편집, 명령, 테스트와 commit은 canonical feature worktree에서 수행하고 예상 branch인지 확인하세요.
 
+위임된 작업에도 동일한 canonical feature worktree와 승인 범위를 적용하세요. 변경 범위를 분리하고 동일 파일의 동시 수정을 피하세요. 공유 실행 metadata 갱신, staging·commit, branch 조작, checkpoint 생성·복원과 통합 helper 실행은 메인 대화에서만 수행하세요.
+
+checkpoint 생성·복원 및 최종 검증·독립 리뷰 전에 위임 결과를 회수하고 진행 중인 변경 작업이 모두 끝났는지 확인하세요. 최종 검증·리뷰·통합 중에는 새로운 변경 작업을 시작하지 말고, 변경이 필요하면 구현 단계로 돌아가 해당 증거를 갱신하세요.
+
 ## Current Spec 적용
 
 구현 전에 tracked feature spec의 `Current Spec Impact`를 읽으세요.
@@ -109,7 +113,7 @@ local plan의 실행 범위 안에서 자율적으로 구현하되 feature spec�
 
 goal 도구가 있으면 활성 goal을 확인해 같은 feature ID와 objective이면 채택하고, 완료되지 않은 다른 goal이 있으면 교체하지 말고 pause·clear 또는 중단 선택을 요구하세요. goal이 없으면 승인된 objective로 생성하고 승인된 token 수가 있을 때만 token budget을 전달하세요. 도구가 없으면 정확한 `/goal <objective>`를 출력하고 사용자가 시작할 때까지 기다리세요.
 
-각 실험은 clean baseline 또는 current best checkpoint에서 시작하고 승인된 search space만 바꾸세요. measurement와 guardrail, parameters, metric, duration, budget usage와 HEAD를 기록하세요. 유효한 개선만 best commit으로 보존하고 실패하거나 더 나쁜 agent 소유 변경은 best checkpoint로 복원하세요. 예기치 않은 사용자·동시 변경은 덮어쓰지 마세요.
+같은 worktree를 수정하는 실험은 순차적으로 수행하고 checkpoint 복원과 겹치지 않게 하세요. 각 실험은 clean baseline 또는 current best checkpoint에서 시작하고 승인된 search space만 바꾸세요. measurement와 guardrail, parameters, metric, duration, budget usage와 HEAD를 기록하세요. 유효한 개선만 best commit으로 보존하고 실패하거나 더 나쁜 agent 소유 변경은 best checkpoint로 복원하세요. 예기치 않은 사용자·동시 변경은 덮어쓰지 마세요.
 
 모든 budget을 강제하세요. target에 도달하지 못한 채 소진되면 complete로 표시하지 말고 재계획 또는 goal pause·edit·clear를 요청하세요. target과 guardrail이 재현 가능하게 검증되면 goal을 complete로 표시하고, token budget이 있으면 goal 도구가 반환한 최종 token usage를 보고한 뒤 적용되는 최종 검증, 독립 리뷰와 통합을 계속하세요.
 
@@ -117,7 +121,7 @@ goal 도구가 있으면 활성 goal을 확인해 같은 feature ID와 objective
 
 검증과 review 결과를 clean feature HEAD에 연결하고 변경이 생기면 stale로 표시하세요. goal loop는 verified best checkpoint의 target·guardrail과 적용되는 최종 검증을 확인합니다.
 
-적용되는 검증을 마친 뒤 구현 context가 격리된 reviewer subagent 하나를 생성하고 다음만 제공하세요. 별도 eval 계약이 없어도 독립 리뷰를 수행하며, 없는 결과를 통과로 표시하지 마세요.
+적용되는 검증을 마친 뒤 해당 변경의 구현에 참여하지 않았고 구현 context가 격리된 reviewer subagent 하나를 생성하고 다음만 제공하세요. 구현 agent의 자체 점검은 최종 독립 리뷰를 대신하지 않습니다. 별도 eval 계약이 없어도 독립 리뷰를 수행하며, 없는 결과를 통과로 표시하지 마세요.
 
 - tracked feature spec, 관련 current spec과 승인 기준
 - comparison ref와 feature HEAD
